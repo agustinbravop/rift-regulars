@@ -1,0 +1,10 @@
+.env
+.env.*
+/data/
+node_modules/
+.svelte-kit/
+build/
+.vite/
+__pycache__/
+*.py[cod]
+*.tmp

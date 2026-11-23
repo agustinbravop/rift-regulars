@@ -1,7 +1,6 @@
-import { readSavedData } from '#lib/server/storage.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ setHeaders }) => {
   setHeaders({ 'cache-control': 'no-store' });
-  return readSavedData();
+  return { summary: null, error: null };
 };

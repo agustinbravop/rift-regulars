@@ -23,7 +23,6 @@
   let matchSection = $state<HTMLElement>();
   let sectionVisible = $state(false);
   let showAllButton = $state<HTMLButtonElement | null>(null);
-  let showAllChampions = $state(false);
   let tableHeight = $state(0);
   let summaryHeaderHeight = $state(0);
   let sortColumn = $state<MatchSort>('at');
@@ -52,7 +51,9 @@
     for (const e of player.encounters) counts.set(e.champion, (counts.get(e.champion) ?? 0) + 1);
     return [...counts].sort((a, b) => b[1] - a[1] || championLabel(a[0]).localeCompare(championLabel(b[0])));
   });
-  const championLimit = $derived(championRowsThatFit(tableHeight, summaryHeaderHeight, champions.length));
+  const championLimit = $derived(championRowsThatFit(tableHeight, summaryHeaderHeight, champions.length, matches.length));
+  const hiddenChampions = $derived(showAllMatches ? [] : champions.slice(championLimit));
+  const hiddenGames = $derived(hiddenChampions.reduce((total, [, count]) => total + count, 0));
 
   $effect(() => {
     if (!showAllMatches || !matchSection) return;
@@ -94,26 +95,29 @@
     <h3 class="champions-heading">Champions played</h3>
   </div>
   <ul class="champion-lineup">
-    {#each champions.slice(0, showAllChampions ? champions.length : championLimit) as [champion, count] (champion)}
+    {#each champions.slice(0, showAllMatches ? champions.length : championLimit) as [champion, count] (champion)}
       <li class="champion-entry">
         <ChampionPortrait {champion} />
         <strong>{championLabel(champion)}</strong><span>{count} {count === 1 ? 'game' : 'games'}</span>
       </li>
     {/each}
   </ul>
-  {#if champions.length > championLimit}
-    <Button variant="ghost" class="all-champions" aria-expanded={showAllChampions} onclick={() => showAllChampions = !showAllChampions}>
-      {showAllChampions ? 'Show fewer' : `Show ${champions.length - championLimit} more`}
-    </Button>
+  {#if hiddenChampions.length}
+    <div class="champion-overflow" aria-label={`${hiddenChampions.length} more champions, ${hiddenGames} ${hiddenGames === 1 ? 'game' : 'games'}`}>
+      <span>… {hiddenChampions.length} more</span>
+      <span>{hiddenGames} {hiddenGames === 1 ? 'game' : 'games'}</span>
+    </div>
   {/if}
 </div>
 
 <Separator orientation="vertical" decorative class="details-divider" />
 
-<section class="shared-matches" class:all-matches={showAllMatches} aria-label="Shared matches" bind:this={matchSection} bind:clientHeight={tableHeight}>
+<section class="shared-matches" aria-label="Shared matches" bind:this={matchSection} bind:clientHeight={tableHeight}>
   <Table.Root aria-label={`Match history with ${player.name}`}>
     <colgroup>
-      <col span="2" class="match-player-column" />
+      <col class="match-they-column" />
+      <col class="match-relationship-column" />
+      <col class="match-player-column" />
       <col class="match-result-column" />
       <col class="match-queue-column" />
       <col class="match-date-column" />
@@ -130,6 +134,9 @@
               {/if}
             </Button>
           </Table.Head>
+          {#if column.key === 'champion'}
+            <Table.Head scope="col"><span class="sr-only">Relationship</span></Table.Head>
+          {/if}
         {/each}
       </Table.Row>
     </Table.Header>
@@ -141,6 +148,9 @@
               {@render matchPortrait(event.champion, event.role)}
               <span class="match-kda" aria-label={`${player.name}: ${event.kda[0]} kills, ${event.kda[1]} deaths, ${event.kda[2]} assists`}><span>{event.kda[0]}</span> / <span>{event.kda[1]}</span> / <span>{event.kda[2]}</span></span>
             </div>
+          </Table.Cell>
+          <Table.Cell class="match-relationship">
+            <span class:ally-text={event.together} class:match-against={!event.together}>{event.together ? 'with' : 'against'}</span>
           </Table.Cell>
           <Table.Cell>
             <div class="champion-performance">
@@ -164,12 +174,14 @@
       {/each}
     </Table.Body>
   </Table.Root>
-  {#if player.encounters.length > 5}
+</section>
+{#if player.encounters.length > 5 || champions.length > championLimit || showAllMatches}
+  <div class="details-footer" class:all-matches={showAllMatches}>
     {#if showAllMatches}
       <Button variant="ghost" class="more-matches" aria-expanded="true" onclick={collapseMatches}>Show less</Button>
       {#if sectionVisible}
         <div class="collapse-matches-position">
-          <Button class="collapse-matches" aria-label="Show less match history" aria-expanded="true" onclick={collapseMatches}>
+          <Button class="collapse-matches" aria-label="Show fewer matches and champions" aria-expanded="true" onclick={collapseMatches}>
             <ChevronUp data-icon="inline-start" aria-hidden="true" />Show less
           </Button>
         </div>
@@ -177,5 +189,5 @@
     {:else}
       <Button bind:ref={showAllButton} variant="ghost" class="more-matches" aria-expanded="false" onclick={() => showAllMatches = true}><ChevronDown data-icon="inline-start" aria-hidden="true" />Show all</Button>
     {/if}
-  {/if}
-</section>
+  </div>
+{/if}

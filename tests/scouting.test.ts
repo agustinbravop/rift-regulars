@@ -8,6 +8,18 @@ import { account, coverage, match, year } from './fixtures.ts';
 
 const player = summarize(account, [match(1), match(2)], year, {}, coverage).players[0];
 
+test('filtered expanded players retain their identity and only the selected queue encounters', () => {
+  const encounters = ['420', '450', '420'].map(queue => ({ ...player.encounters[0], queue }));
+  const players = [{ ...player, encounters }];
+  const filtered = filterPlayers(players, '', '420');
+  const expanded = filtered.find(candidate => candidate.id === player.id);
+  assert.ok(expanded);
+  assert.deepEqual(expanded.encounters.map(event => event.queue), ['420', '420']);
+  assert.equal(filterPlayers(players, '', '450').some(candidate => candidate.id === player.id), false);
+  assert.equal(filterPlayers(players, '', '420', false, [player.id]).length, 0);
+  assert.equal(players[0].encounters.length, 3);
+});
+
 test('row expansion ignores interactive controls, the premade cell, and selected text', () => {
   assert.equal(shouldExpandRow({ closest: () => null }, ''), true);
   assert.equal(shouldExpandRow({ closest: () => null }, 'selected player name'), false);

@@ -1,12 +1,19 @@
-// shortcut: imported matches are LAS-only, add platform mappings when other regions are supported.
-export const matchUrl = (match: string) =>
-  /^LA2_\d+$/.test(match) ? `https://www.leagueofgraphs.com/match/las/${match.slice(4)}` : undefined;
+const matchRegions: Record<string, string> = {
+  LA2: 'las', LA1: 'lan', NA1: 'na', BR1: 'br', EUW1: 'euw', EUN1: 'eune',
+  TR1: 'tr', RU: 'ru', KR: 'kr', JP1: 'jp', OC1: 'oce', SG2: 'sg', TW2: 'tw', VN2: 'vn', ME1: 'me'
+};
+export function matchUrl(match: string) {
+  const parts = /^([A-Z0-9]+)_(\d+)$/.exec(match);
+  const region = parts && matchRegions[parts[1]];
+  return region ? `https://www.leagueofgraphs.com/match/${region}/${parts![2]}` : undefined;
+}
 
-export function championRowsThatFit(tableHeight: number, headerHeight: number, count: number) {
-  // Champion rows are 48px tall with an 8px gap; reserve 44px for Show all only when needed.
+export function championRowsThatFit(tableHeight: number, headerHeight: number, count: number, matchCount: number) {
+  if (count < 5 && matchCount <= 5) return count;
+  // Rows are 48px tall with an 8px gap; reserve 28px for the overflow summary only when needed.
   const available = Math.max(0, tableHeight - headerHeight);
   if (count * 56 - 8 <= available) return count;
-  return Math.max(0, Math.floor((available - 44) / 56));
+  return Math.max(0, Math.floor((available - 28) / 56));
 }
 import type { Encounter } from './types.ts';
 import { championLabel } from './champions.ts';

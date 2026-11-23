@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Riot } from '../src/lib/server/riot.ts';
+import { RiotRateLimiter } from '../src/lib/server/rate-limit.ts';
 
 test('paces requests, sends key in header, and honors Retry-After', async () => {
   let calls = 0;
   const waits: number[] = [];
+  let now = 0;
+  const pause = async (ms: number) => { waits.push(ms); now += ms; };
   const request: typeof fetch = async (url, options) => {
     assert.equal(String(url), 'https://americas.api.riotgames.com/test');
     assert.equal(new Headers(options?.headers).get('X-Riot-Token'), 'test-only');
@@ -13,7 +16,8 @@ test('paces requests, sends key in header, and honors Retry-After', async () => 
       ? new Response('', { status: 429, headers: { 'Retry-After': '2' } })
       : Response.json({ ok: true });
   };
-  const riot = new Riot('test-only', request, async ms => { waits.push(ms); });
+  const riot = new Riot('test-only', request, pause, undefined, 'americas',
+    new RiotRateLimiter(pause, () => now));
   assert.deepEqual(await riot.get('/test'), { ok: true });
   assert.ok(waits.includes(2000));
   assert.equal(calls, 2);

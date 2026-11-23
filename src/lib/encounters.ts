@@ -6,7 +6,7 @@ export const yearStart = (year: number) => Date.UTC(year, 0, 1) / 1000;
 
 export function summarize(
   account: Account, matches: Match[], year: number,
-  queues: Record<string, string>, coverage: Coverage
+  queues: Record<string, string>, coverage: Coverage, platform = 'LA2'
 ): Summary {
   const players = new Map<string, Player>();
   const accepted: number[] = [];
@@ -15,7 +15,7 @@ export function summarize(
     const { info, metadata: { matchId } } = match;
     const at = info.gameStartTimestamp ?? info.gameCreation ?? 0;
     if (seenMatches.has(matchId) || at / 1000 < yearStart(year) || at / 1000 >= yearStart(year + 1)) continue;
-    if ((info.platformId ?? 'LA2') !== 'LA2') continue;
+    if ((info.platformId ?? platform) !== platform) continue;
     seenMatches.add(matchId);
     const me = info.participants.find(p => p.puuid === account.puuid);
     if (!me) continue;

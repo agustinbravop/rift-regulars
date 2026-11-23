@@ -6,11 +6,11 @@ product
 
 ## Users
 
-Agus Brr, a LAS League of Legends player using a personal local dashboard to recognize recurring teammates and opponents.
+League of Legends players looking up their own Riot ID and server to recognize recurring teammates and opponents.
 
 ## Product Purpose
 
-Answer “Who have I met most often?” using saved matches from the current calendar year. Count two or more encounters across all queues, then show each player's shared matches in one chronological table. A current-game lookup is a later feature.
+Answer “Who have I met most often?” using retrievable matches from the current calendar year. A simple landing page accepts a Riot ID and server. Riot requests run on the server; compact match history stays in the browser's IndexedDB, separated by account, server, and year. Refresh downloads missing games and retains cached history. Count two or more encounters across all queues, then show each player's shared matches in one chronological table. A current-game lookup is a later feature.
 
 ## Brand Personality
 
@@ -20,7 +20,7 @@ A full-width sortable player list with inline expandable row details is the chos
 
 ## Anti-references
 
-No eyebrows, marketing sections, decorative effects, or separate dossier/sidebar. No unsupported premade claims. No dense tiny-text tables. No reset-filter button.
+No eyebrows, extra marketing sections beyond the search hero, decorative effects, or separate dossier/sidebar. No unsupported premade claims. No dense tiny-text tables. No reset-filter button.
 
 ## Design Principles
 

@@ -1,6 +1,6 @@
 # Familiar Players
 
-Personal LAS match-history tracker for **Agus Brr#ARG**.
+League of Legends match-history tracker for any supported Riot ID and server.
 
 **SvelteKit + Svelte 5 + TypeScript + shadcn-svelte + Tailwind CSS v4.** The importer is TypeScript too; Python is no longer needed.
 
@@ -22,28 +22,25 @@ Create a `.env` file containing your Riot development key:
 RIOT_API_KEY=your-development-key
 ```
 
-In another terminal, from this folder:
+Enter **Player name#TAG**, choose the server, and click **Find familiar players** (or press Enter). The account is checked before navigation; a missing player shows an error below the landing inputs. Valid players open `/player/Name%23TAG?server=LA2`. The first scan has its own loading view, with listing/download progress, and automatically reveals the familiar-player table when complete. Keep the tab open during the scan; retry resumes missing downloads after an interruption. Partial saved history can also be viewed explicitly.
 
-```bash
-bun run fetch
-```
-
-The importer loads `.env` using Node's built-in env-file support. An existing environment variable takes precedence. Development keys expire; a 403 means you should renew the key.
-
-Click **Reload saved data** to see import progress. Summaries update every ten downloads. The browser only reloads local data; it never receives the key or makes Riot requests.
+Opening a player link with complete browser-cached history shows results without Riot requests. Landing searches validate the Riot ID before navigating, even when its history is cached. Incomplete caches resume in the scan view. **Refresh** lists history again and downloads only missing matches. The browser never receives the API key. Development keys expire; a 403 means the server owner must renew the key.
 
 ## Saved data and import behavior
 
-- Retains the original `data/matches/*.json`, `data/queues.json`, and `data/summary.json` format.
-- Requests all LAS Match-V5 history from January 1 of the current UTC year through the import start time.
-- Reuses downloaded matches and retains previously listed cached history if Riot no longer returns it.
-- Writes JSON atomically. Invalid API responses or corrupt cache files stop the import without deleting existing files.
-- Paces requests for development-key limits, respects `Retry-After`, retries temporary failures, and preserves partial progress.
-- Run **one importer at a time** and avoid other apps sharing the key during import.
-- Around 1,000 uncached matches takes 22 minutes before retries. Ctrl+C keeps downloaded matches; rerun to resume.
+- New lookups store compact matches in **IndexedDB**, keyed by server, current UTC year, and player PUUID. Every participant is retained, including one-off encounters needed to recognize future repeats.
+- No new match data is written to the server's filesystem. Existing `data/` files are untouched and are no longer served by the dashboard; `/api/data` returns 410.
+- Requests Match-V5 history for the selected server from January 1 UTC through scan start. Previously cached matches remain even if Riot stops listing them.
+- Saves an atomic browser snapshot after each listing page, every ten downloads, completion, and handled failures. Closing the tab may lose the latest unsaved batch, not earlier saved progress.
+- Riot records with zero participants are tracked as excluded instead of blocking the scan. Coverage details show their IDs; Refresh retries them in case usable details become available. Non-empty matches missing the tracked player still stop the scan.
+- All visitors share a serialized server-side Riot queue and a burst-aware rolling-window limiter. Without headers, it allows up to 20 requests/second and 100 requests/120 seconds, with a small boundary safety margin. Riot's app and per-method limit/count headers update the budgets; 429 responses establish shared `Retry-After` cooldowns. Requests no longer have an unconditional 1.3-second delay. App usage is conservatively combined across regions; method limits are scoped by endpoint and region. A browser Web Lock prevents simultaneous imports of the same account in multiple tabs.
+- Small refreshes can use available burst quota and are primarily network-bound. Large first scans still wait when a rate window fills; throughput depends on the key's advertised limits, network latency, retries, and other visitors. Listing still checks the full current year.
+- Browser storage can be cleared or evicted. Another device, browser profile, or origin requires a new scan. Storage failures show a warning and retain results only in the current tab. Scanning requires HTTPS or localhost.
+- The legacy `bun run fetch` CLI still imports Agus Brr's LAS history into the original `data/` format, independently of browser caches. Do not run it concurrently with web scans or other apps sharing the key.
 
 ## Interface
 
+- Landing search remembers every successful lookup in this browser. Focusing the player input opens a scrollable, newest-first list, filtered by name or tag as you type. Entries show their server, open history on selection, and can be removed without deleting cached matches. Tab/arrow keys navigate the list; Escape closes it.
 - Players encountered in at least two distinct games, combining teammates and opponents.
 - Total encounters, teammate/opponent split, champions, last encounter, and your wins/losses with and against each player.
 - One sortable match-history table across queues, with both players' champions, K/D/A, recorded roles, and results.
@@ -84,12 +81,18 @@ Tests use synthetic fixtures in temporary directories. They never replace your i
 scripts/fetch.ts                     Riot import command
 src/lib/encounters.ts                Shared counting and filtering
 src/lib/types.ts                     Match and saved-data types
-src/lib/server/                      Riot client, validation, private disk access
+src/lib/history.ts                   Compact match cache and derived summaries
+src/lib/import-history.ts            Incremental browser import workflow
+src/lib/browser-cache.ts             IndexedDB persistence and cache validation
+src/lib/validation.ts                Shared Riot and saved-data validation
+src/lib/regions.ts                   Supported servers and regional routing
+src/lib/server/                      Riot client, shared request queue, legacy disk access
 src/lib/components/ui/               Owned shadcn-svelte component sources
 src/lib/components/PlayerDetails.svelte
-src/routes/+page.svelte              Sortable rows and manual premade tags
-src/routes/+page.server.ts           Initial saved-data load
-src/routes/api/data/+server.ts       Saved-data reload endpoint
+src/routes/+page.svelte              Riot ID and server search hero
+src/routes/player/[riotId]/+page.svelte Scan view, browser import, sortable rows, premade tags
+src/routes/player/+page.server.ts    Redirects legacy query-string player links
+src/routes/api/history/+server.ts    Validated server-side Riot proxy
 tests/                              Counting, validation, rate-limit, cache tests
 docs/PREMADES.md                     Party-data research and limitations
 ```
@@ -102,6 +105,7 @@ docs/PREMADES.md                     Party-data research and limitations
 - General party membership is not exposed. Repeated teammates are **not** confirmed premades. Narrow penalty-related premade flags cannot identify party members. See [research notes](docs/PREMADES.md).
 - Arena uses `playerSubteamId` when available; other squads count as opponents, not necessarily direct round opponents.
 - Current-game lookup is deferred.
-- `.env` and `data/` stay private and gitignored. The dev server explicitly blocks filesystem access to both; production serves only built public assets and the summary endpoint.
-- Local-only personal app, no authentication or public deployment. Not an official Riot product.
+- `.env` and legacy `data/` stay private and gitignored. The dev server explicitly blocks filesystem access to both. Riot proxy requests require same-origin JSON, have bounded request bodies, and accept only validated fixed endpoint inputs.
+- The shared limiter assumes one Node process. This remains a local/self-hosted app, not a hardened public service: public deployment needs abuse controls and an appropriate Riot API key; multiple processes need shared rate limiting. Origin checks are not authentication.
+- Match caches are device-local, not encrypted against other users of the same browser profile. No authentication. Not an official Riot product.
 - Visual changes are reviewed by the user in Brave; do not use Playwright MCP unless requested.

@@ -1,6 +1,7 @@
 import type { Account, Match, Summary } from './types.ts';
 import { championName } from './champions.ts';
 import { roleLabels } from './roles.ts';
+import { parsePlatform, parseRiotId } from './regions.ts';
 
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected a JSON object.');
@@ -18,6 +19,14 @@ export function parseAccount(value: unknown): Account {
   const a = object(value);
   requireValue(text(a.puuid) && a.puuid && text(a.gameName) && text(a.tagLine));
   return a as unknown as Account;
+}
+
+export function parseDiscovery(value: unknown) {
+  const result = object(value);
+  const account = parseAccount(result.account);
+  requireValue(/^[\w-]{10,200}$/.test(account.puuid));
+  parseRiotId(`${account.gameName}#${account.tagLine}`);
+  return { account, platform: parsePlatform(result.platform) };
 }
 
 export function parseMatchIds(value: unknown): string[] {

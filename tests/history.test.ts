@@ -6,7 +6,7 @@ import { importHistory } from '../src/lib/import-history.ts';
 import { parseHistory } from '../src/lib/browser-cache.ts';
 import { parsePlatform, parseRiotId } from '../src/lib/regions.ts';
 import { historyRequest } from '../src/lib/server/history.ts';
-import { summarize } from '../src/lib/encounters.ts';
+import { summarize, yearStart } from '../src/lib/encounters.ts';
 
 const history = (): History => ({
   account, platform: 'LA2', year, ids: [], matches: [], listed: false,
@@ -42,7 +42,7 @@ test('validates player and server input before making a Riot request', async () 
   assert.throws(() => parsePlatform('__proto__'));
   for (const input of [
     { platform: 'LA2', action: 'match', id: 'LA2_1/../../anything' },
-    { platform: 'LA2', action: 'match', id: 'NA1_1' },
+    { platform: 'LA2', action: 'match', id: 'UNKNOWN_1' },
     { platform: 'LA2', action: 'ids', puuid: 'invalid', start: -1 },
     { platform: 'LA2', action: 'unknown' }
   ]) await assert.rejects(historyRequest(input, 'synthetic-only'));
@@ -68,7 +68,7 @@ test('compaction preserves all encounters and dashboard results without unused R
   assert.deepEqual(parseHistory(structuredClone(h)), h);
   const otherRegion = structuredClone(h);
   otherRegion.platform = 'NA1';
-  assert.throws(() => parseHistory(otherRegion));
+  assert.deepEqual(historySummary(otherRegion), summary);
   assert.throws(() => parseHistory({ ...h, matches: [match(999)] }));
 });
 
@@ -103,7 +103,7 @@ test('first scan, incremental refresh, and interrupted resume reuse cached match
   assert.equal(historySummary(h).coverage.complete, true);
 });
 
-test('paginates all queues, excludes other platforms, and keeps partial listing progress', async () => {
+test('paginates all queues and platforms, deduplicates IDs, and keeps partial listing progress', async () => {
   const h = history();
   let fail = true;
   const page = Array.from({ length: 99 }, (_, i) => `LA2_${i + 1}`);
@@ -116,15 +116,20 @@ test('paginates all queues, excludes other platforms, and keeps partial listing 
       if (fail) throw new Error('Listing failed');
       return [] as T;
     }
-    return match(Number(String(body.id).split('_')[1])) as T;
+    const game = match(Number(String(body.id).split('_')[1]));
+    game.metadata.matchId = String(body.id);
+    game.info.platformId = String(body.id).split('_')[0];
+    return game as T;
   };
   await assert.rejects(importHistory(h, api, async () => {}), /Listing failed/);
-  assert.equal(h.ids.length, 99);
+  assert.equal(h.ids.length, 100);
   assert.equal(h.listed, false);
   fail = false;
   await importHistory(h, api, async () => {});
   assert.deepEqual(starts, [0, 100, 0, 100]);
-  assert.equal(h.matches.length, 99);
+  assert.equal(h.matches.length, 100);
+  assert.equal(historySummary(h).matches, 100);
+  assert.equal(historySummary(h).players[0].encounters.length, 100);
   assert.equal(h.listed, true);
 });
 
@@ -152,7 +157,11 @@ test('empty records do not block scanning, persist as exclusions, and are retrie
     if (body.action === 'ids') return ['LA2_1', 'LA2_2'] as T;
     requested.push(String(body.id));
     const game = match(Number(String(body.id).split('_')[1]));
-    if (body.id === 'LA2_1' && !repaired) game.info.participants = [];
+    if (body.id === 'LA2_1' && !repaired) {
+      game.info.participants = [];
+      game.info.gameStartTimestamp = 0;
+      game.info.gameCreation = 0;
+    }
     return game as T;
   };
   await importHistory(h, api, async () => {});
@@ -160,7 +169,7 @@ test('empty records do not block scanning, persist as exclusions, and are retrie
   assert.deepEqual(h.excluded, ['LA2_1']);
   assert.equal(historySummary(h).coverage.missing, 0);
   assert.equal(historySummary(h).coverage.complete, true);
-  assert.match(historySummary(h).coverage.note, /1 empty match record/);
+  assert.doesNotMatch(historySummary(h).coverage.note, /excluded/i);
   assert.deepEqual(parseHistory(structuredClone(h)), h);
   await importHistory(h, api, async () => {});
   assert.deepEqual(h.excluded, ['LA2_1']);
@@ -172,6 +181,24 @@ test('empty records do not block scanning, persist as exclusions, and are retrie
   assert.equal(historySummary(h).coverage.complete, true);
   assert.throws(() => parseHistory({ ...h, excluded: ['LA2_1'] }));
   assert.throws(() => parseHistory({ ...h, excluded: ['LA2_999'] }));
+});
+
+test('out-of-year records do not stop later downloads or enter the saved year', async () => {
+  const h = history();
+  const games = [match(1), match(2), match(3), match(4)];
+  games[0].info.gameStartTimestamp = yearStart(year) * 1000 - 1;
+  games[1].info.gameStartTimestamp = yearStart(year + 1) * 1000;
+  games[2].info.gameStartTimestamp = yearStart(year) * 1000;
+  let saved: History | undefined;
+  await importHistory(h, async <T>(body: Record<string, unknown>) =>
+    (body.action === 'ids' ? games.map(m => m.metadata.matchId)
+      : games.find(m => m.metadata.matchId === body.id)) as T,
+  async value => { saved = structuredClone(value); });
+  assert.deepEqual(h.excluded, ['LA2_1', 'LA2_2']);
+  assert.deepEqual(h.matches.map(m => m.metadata.matchId), ['LA2_3', 'LA2_4']);
+  assert.equal(historySummary(h).matches, 2);
+  assert.equal(historySummary(h).coverage.complete, true);
+  assert.deepEqual(parseHistory(saved), h);
 });
 
 test('server serializes requests across regions and uses Asia for SEA account lookups', async () => {
@@ -204,6 +231,12 @@ test('server serializes requests across regions and uses Asia for SEA account lo
     assert.equal(peak, 1);
     assert.ok(urls[0].startsWith('https://europe.api.riotgames.com/lol/match/'));
     assert.ok(urls[1].startsWith('https://americas.api.riotgames.com/lol/match/'));
+    const query = new URL(urls[1]).searchParams;
+    assert.equal(query.get('startTime'), String(yearStart(year)));
+    assert.ok(Number(query.get('endTime')) <= Math.floor(Date.now() / 1000));
+    assert.ok(Number(query.get('endTime')) >= yearStart(year));
+    assert.equal(query.get('start'), '0');
+    assert.equal(query.get('count'), '100');
     assert.ok(urls[2].startsWith('https://asia.api.riotgames.com/riot/account/'));
   } finally { globalThis.fetch = original; }
 });

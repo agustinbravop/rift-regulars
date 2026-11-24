@@ -23,6 +23,11 @@ export function parsePlatform(value: unknown): Platform {
   return value as Platform;
 }
 
+export function matchPlatform(id: unknown): Platform {
+  if (typeof id !== 'string' || !/^[A-Z0-9]+_\d+$/.test(id)) throw new Error('Invalid match ID.');
+  return parsePlatform(id.split('_')[0]);
+}
+
 export function parseRiotId(value: unknown) {
   if (typeof value !== 'string') throw new Error('Enter a player name and #TAG.');
   const parts = value.trim().split('#');

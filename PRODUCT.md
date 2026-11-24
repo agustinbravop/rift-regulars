@@ -1,4 +1,4 @@
-# Familiar Players
+# Rift Regulars
 
 ## Register
 
@@ -6,13 +6,15 @@ product
 
 ## Users
 
-League of Legends players looking up their own Riot ID and server to recognize recurring teammates and opponents.
+League of Legends players looking up their Riot ID to recognize recurring teammates and opponents.
 
 ## Product Purpose
 
-Answer “Who have I met most often?” using retrievable matches from the current calendar year. A simple landing page accepts a Riot ID and server. Riot requests run on the server; compact match history stays in the browser's IndexedDB, separated by account, server, and year. Refresh downloads missing games and retains cached history. Count two or more encounters across all queues, then show each player's shared matches in one chronological table. A current-game lookup is a later feature.
+Answer “Who have I met most often?” using retrievable matches from the current calendar year. Landing and header search ask only for Name#TAG and discover the active League platform through Account-V1, starting on Americas without tag/IP inference. Riot requests run on the server; compact match history stays in the browser's IndexedDB, separated by account PUUID and year. The detected server is routing/display metadata. Refresh lists the current platform's regional host and downloads missing games, retaining cached matches from other platforms. Count two or more encounters across all queues and cached platforms, then show each player's shared matches in one chronological table. No regional-host fanout or complete transfer-history promise: live cross-region discovery and transfer PUUID continuity remain unverified, and different PUUIDs are not merged. A current-game lookup is a later feature.
 
 ## Brand Personality
+
+Public name: Rift Regulars. Headline: “Know the names you keep seeing on Summoner’s Rift.”
 
 Practical, readable, compact. A match tracker, not a marketing site.
 

@@ -1,6 +1,8 @@
 import type { History } from './history.ts';
 import type { Match } from './types.ts';
 import { parseMatch, parseMatchIds } from './validation.ts';
+import { matchPlatform } from './regions.ts';
+import { yearStart } from './encounters.ts';
 
 type Api = <T>(body: Record<string, unknown>) => Promise<T>;
 
@@ -17,7 +19,10 @@ export async function importHistory(
     const page = parseMatchIds(await api<string[]>({
       action: 'ids', puuid: history.account.puuid, start, until: history.until
     }));
-    for (const id of page) if (id.startsWith(`${history.platform}_`)) ids.add(id);
+    for (const id of page) {
+      matchPlatform(id);
+      ids.add(id);
+    }
     history.ids = [...ids];
     history.updated = new Date().toISOString();
     await publish(history, `Found ${ids.size} matches…`);
@@ -30,10 +35,13 @@ export async function importHistory(
   await publish(history, 'Scanning match details…');
   for (const [index, id] of missing.entries()) {
     const match = parseMatch(await api<Match>({ action: 'match', id }), id);
-    if (match.info.participants.length === 0) {
+    const at = (match.info.gameStartTimestamp ?? match.info.gameCreation ?? 0) / 1000;
+    // Riot can list empty records with zero timestamps despite the requested year bounds.
+    if (match.info.participants.length === 0 ||
+      at < yearStart(history.year) || at >= yearStart(history.year + 1)) {
       excluded.add(id);
     } else if (!match.info.participants.some(p => p.puuid === history.account.puuid)) {
-      throw new Error('Riot returned a match without this player. Saved progress was kept.');
+      throw new Error('Riot returned a match without this player.');
     } else {
       excluded.delete(id);
       history.matches.push(match);

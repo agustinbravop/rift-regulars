@@ -7,7 +7,7 @@ export interface RecentPlayer {
   platform: Platform;
 }
 
-export const recentPlayersKey = 'familiar-players:recent-players';
+export const recentPlayersKey = 'rift-regulars:recent-players';
 
 export function parseRecentPlayers(raw: string | null): RecentPlayer[] {
   if (raw === null) return [];

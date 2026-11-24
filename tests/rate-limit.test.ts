@@ -141,3 +141,17 @@ test('aborted reservations do not spend quota', async () => {
   for (let i = 0; i < 20; i++) await c.limiter.acquire('account');
   assert.deepEqual(c.waits, []);
 });
+
+test('League region lookup has its own method-limit bucket, separate from Account-V1 identity', async () => {
+  const c = clock();
+  const riot = new Riot('synthetic-only', async url => Response.json({}, {
+    headers: String(url).includes('/accounts/') ? {
+      'X-Method-Rate-Limit': '1:2', 'X-Method-Rate-Limit-Count': '1:2'
+    } : {}
+  }), c.pause, undefined, 'americas', c.limiter);
+  await riot.get('/riot/account/v1/accounts/by-riot-id/Player/TAG');
+  await riot.get('/riot/account/v1/region/by-game/lol/by-puuid/synthetic-puuid');
+  assert.equal(c.now(), 0);
+  await riot.get('/riot/account/v1/accounts/by-riot-id/Player/TAG');
+  assert.equal(c.now(), 2025);
+});

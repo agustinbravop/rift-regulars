@@ -13,7 +13,7 @@ const script = resolve('scripts/fetch.ts');
 const mock = resolve('tests/mock-riot.ts');
 
 test('imports atomically, reuses cached matches, and preserves summary when authentication fails', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'familiar-players-test-'));
+  const directory = await mkdtemp(join(tmpdir(), 'rift-regulars-test-'));
   const run = (mode: string) => exec(process.execPath, ['--import', mock, script], {
     cwd: directory, env: { ...process.env, RIOT_API_KEY: 'synthetic-only', FP_TEST_CASE: mode }
   });
@@ -35,7 +35,7 @@ test('imports atomically, reuses cached matches, and preserves summary when auth
 });
 
 test('atomic JSON save replaces only its intended file', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'familiar-players-save-'));
+  const directory = await mkdtemp(join(tmpdir(), 'rift-regulars-save-'));
   try {
     const path = join(directory, 'nested', 'test.json');
     await saveJson(path, { safe: true });

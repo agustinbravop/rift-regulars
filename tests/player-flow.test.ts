@@ -1,9 +1,23 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFile } from 'node:fs/promises';
 import { playerUrl } from '../src/lib/player-url.ts';
 import { HistoryApiError, requestHistory } from '../src/lib/history-api.ts';
 import { Riot, RiotError } from '../src/lib/server/riot.ts';
 import { account } from './fixtures.ts';
+import { parseDiscovery } from '../src/lib/validation.ts';
+
+test('search feedback uses one persistent toaster and retains accessible input errors', async () => {
+  const layout = await readFile(new URL('../src/routes/+layout.svelte', import.meta.url), 'utf8');
+  const search = await readFile(new URL('../src/lib/components/PlayerSearch.svelte', import.meta.url), 'utf8');
+  assert.equal((layout.match(/<Toaster\b/g) ?? []).length, 1);
+  assert.ok(layout.indexOf('<Toaster') < layout.indexOf('{#key'));
+  assert.ok(search.includes("toast.error(error, { id: 'player-search-error' })"));
+  assert.ok(search.includes("toast.dismiss('player-search-error')"));
+  assert.ok(search.includes("toast.warning(recentStorageError, { id: 'recent-players-storage' })"));
+  assert.ok(search.includes('<p id="lookup-error" class="sr-only">{error}</p>'));
+  assert.ok(!search.includes('class="recent-storage-error"'));
+});
 
 test('player URLs put the complete Riot ID in one encoded path segment', () => {
   assert.equal(playerUrl('Agus Brr#ARG', 'LA2'), '/player/Agus%20Brr%23ARG?server=LA2');
@@ -26,6 +40,23 @@ test('account lookup posts the selected server and returns the resolved identity
       return Response.json(account);
     });
   assert.deepEqual(resolved, account);
+});
+
+test('submitted searches discover without posting a server and preserve distinct discovery errors', async () => {
+  const discovered = { account: { ...account, puuid: 'synthetic-puuid' }, platform: 'NA1' };
+  const resolved = parseDiscovery(await requestHistory({ action: 'discover', riotId: 'Agus Brr#ARG' },
+    async (_url, options) => {
+      assert.deepEqual(JSON.parse(String(options?.body)), { action: 'discover', riotId: 'Agus Brr#ARG' });
+      return Response.json(discovered);
+    }));
+  assert.deepEqual(resolved, discovered);
+  for (const message of ['Player not found. Check the player name and #TAG.', 'This account has no active League of Legends region.']) {
+    await assert.rejects(requestHistory({ action: 'discover' },
+      async () => Response.json({ error: message }, { status: 404 })),
+    e => e instanceof HistoryApiError && e.status === 404 && e.message === message);
+  }
+  assert.throws(() => parseDiscovery({ ...discovered, platform: '__proto__' }));
+  assert.throws(() => parseDiscovery({ ...discovered, account: { ...account, puuid: 'invalid' } }));
 });
 
 test('missing players have a distinct inline error, separate from expired keys and missing matches', async () => {

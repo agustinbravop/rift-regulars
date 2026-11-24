@@ -25,7 +25,7 @@ export class Riot {
     routing: 'americas' | 'europe' | 'asia' | 'sea' = 'americas',
     limiter?: RiotRateLimiter
   ) {
-    if (!key.trim()) throw new Error('Set RIOT_API_KEY in your environment or familiar_players/.env.');
+    if (!key.trim()) throw new Error('Set RIOT_API_KEY in your environment or rift_regulars/.env.');
     this.key = key;
     this.request = request;
     this.pause = pause;
@@ -35,7 +35,8 @@ export class Riot {
   }
 
   async get(path: string): Promise<unknown> {
-    const endpoint = path.startsWith('/riot/account/') ? 'account'
+    const endpoint = path.startsWith('/riot/account/v1/region/') ? 'account-region'
+      : path.startsWith('/riot/account/') ? 'account'
       : path.includes('/by-puuid/') ? 'match-ids'
       : path.startsWith('/lol/match/v5/matches/') ? 'match-details' : path.split('?')[0];
     const method = `${this.routing}:${endpoint}`;

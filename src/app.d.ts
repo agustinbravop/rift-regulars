@@ -8,6 +8,7 @@ declare global {
       platform?: RiotPlatform;
       riotId?: string;
       lookupError?: string;
+      discovered?: boolean;
     }
   }
 }

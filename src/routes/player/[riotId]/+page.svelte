@@ -24,22 +24,24 @@
   import { championLabel } from '#lib/champions.ts';
   import SummonerPortrait from '#lib/components/SummonerPortrait.svelte';
   import PlayerDetails from '#lib/components/PlayerDetails.svelte';
+  import PlayerSearch from '#lib/components/PlayerSearch.svelte';
   import { filterPlayers, formatDate, resultSummary, stats } from '#lib/encounters.ts';
-  import { parseQueuePartners, premadeIds } from '#lib/queue-partners.ts';
+  import { premadeIds } from '#lib/queue-partners.ts';
   import { queueLabel, recentChampions, rosterPage, rosterPageIndex, shouldExpandRow, sortPlayers, type PlayerSort, type SortDirection } from '#lib/scouting.ts';
-  import type { Account, Encounter, SavedData } from '#lib/types.ts';
+  import type { Encounter, SavedData } from '#lib/types.ts';
   import { accountIcon, countNewMatches, historySummary, type History } from '#lib/history.ts';
-  import { readHistory, writeHistory } from '#lib/browser-cache.ts';
+  import { readHistory, writeHistory, readPremades, premadeStorageKey } from '#lib/browser-cache.ts';
   import { importHistory } from '#lib/import-history.ts';
   import { regions, parsePlatform, parseRiotId, type Platform } from '#lib/regions.ts';
   import { HistoryApiError, requestHistory } from '#lib/history-api.ts';
-  import { parseAccount } from '#lib/validation.ts';
+  import { parseAccount, parseDiscovery } from '#lib/validation.ts';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
   let refreshed = $state<SavedData | null>(null);
   const saved = $derived(refreshed ?? data);
   const summary = $derived(saved.summary);
+  const currentAccount = $derived(parseRiotId(summary?.account ?? page.params.riotId));
   let search = $state('');
   let queue = $state('all');
   let lastSeen = $state('all');
@@ -67,11 +69,9 @@
   let stopped = false;
   let scanning = $state(true);
   let checkingCache = $state(true);
-  // Keep the original storage key so existing manual marks survive the label change.
-  const storageKey = $derived(`familiar-players:queue-partners:${history ? `${history.platform}:${history.account.puuid}` : ''}`);
-  const unmarkedStorageKey = $derived(`${storageKey}:unmarked`);
+  const storageKey = $derived(premadeStorageKey(history?.account.puuid ?? ''));
   const queues = $derived([...new Set(summary?.players.flatMap(p => p.encounters.map(e => e.queue)) ?? [])]
-    .sort((a, b) => queueName(a).localeCompare(queueName(b))));
+    .sort((a, b) => queueName(b).localeCompare(queueName(a))));
   const players = $derived(sortPlayers(
     filterPlayers(summary?.players ?? [], search, queue, includePremade, premades,
       lastSeen === 'all' ? 0 : Date.now() - Number(lastSeen) * 86_400_000),
@@ -98,16 +98,18 @@
 
   function loadPremades() {
     try {
-      const legacyKey = `familiar-players:queue-partners:${summary?.account}`;
-      markedPremades = parseQueuePartners(localStorage.getItem(storageKey) ?? localStorage.getItem(legacyKey));
-      unmarkedPremades = parseQueuePartners(localStorage.getItem(unmarkedStorageKey) ?? localStorage.getItem(`${legacyKey}:unmarked`));
-    } catch {
-      storageError = 'Saved premade marks could not be read. New changes will apply only in this tab until you reload.';
+      if (!history) return;
+      const { marked, unmarked } = readPremades(localStorage, history.account);
+      markedPremades = marked;
+      unmarkedPremades = unmarked;
+    } catch (error) {
+      storageError = `${error instanceof Error ? error.message : 'Saved premade marks could not be read.'} New changes will apply only in this tab until you reload.`;
     }
   }
 
   function displayHistory(value: History, error: string | null = null) {
     history = value;
+    platform = value.platform;
     refreshed = { summary: historySummary(value, error), error: null };
   }
 
@@ -138,27 +140,34 @@
       platform = parsePlatform(page.url.searchParams.get('server'));
       const { gameName, tagLine } = parseRiotId(page.params.riotId);
       const riotId = `${gameName}#${tagLine}`;
+      const fromLanding = page.state.platform === platform ? page.state.account : undefined;
+      let account = fromLanding &&
+        `${fromLanding.gameName}#${fromLanding.tagLine}`.toLowerCase() === riotId.toLowerCase()
+        ? parseAccount(fromLanding) : null;
       let cached: History | null = null;
-      try { cached = await readHistory(riotId, platform, new Date().getUTCFullYear()); }
+      try {
+        cached = await readHistory(riotId, platform, new Date().getUTCFullYear(), account?.puuid,
+          !!account && page.state.discovered === true);
+      }
       catch { cacheError = 'Saved browser history could not be read. This scan will only be available in this tab.'; }
       if (stopped) return;
       if (cached) {
-        displayHistory(cached);
+        displayHistory({ ...cached, account: account ?? cached.account });
         loadPremades();
         if (!historySummary(cached).coverage.complete) await scan();
         await showHistory();
         return;
       }
       progress = 'Looking up player…';
-      const fromLanding = page.state.platform === platform ? page.state.account : undefined;
-      const account = parseAccount(fromLanding &&
-        `${fromLanding.gameName}#${fromLanding.tagLine}`.toLowerCase() === riotId.toLowerCase()
-        ? fromLanding : await api<Account>({ action: 'account', riotId }));
+      if (!account) {
+        const discovered = parseDiscovery(await api({ action: 'discover', riotId }));
+        account = discovered.account;
+        platform = discovered.platform;
+      }
       if (!cacheError) {
-        const previous = await readHistory(riotId, platform, new Date().getUTCFullYear(), account.puuid);
+        const previous = await readHistory(riotId, platform, new Date().getUTCFullYear(), account.puuid, true);
         if (previous) {
           displayHistory({ ...previous, account });
-          await persist(history!);
           loadPremades();
           if (!historySummary(previous).coverage.complete) await scan();
           await showHistory();
@@ -190,14 +199,14 @@
   async function scan() {
     if (!history) return;
     checkingCache = false;
-    const key = `familiar-players:import:${history.platform}:${history.year}:${history.account.puuid}`;
+    const key = `rift-regulars:import:${history.year}:${history.account.puuid}`;
     if (!navigator.locks) throw new Error('Scanning needs a secure browser context (HTTPS or localhost).');
     await navigator.locks.request(key, { ifAvailable: true }, async lock => {
       if (!lock) throw new Error('This player is already being scanned in another tab. Refresh here when it finishes.');
       let value = $state.snapshot(history!);
       if (!cacheError) {
-        const cached = await readHistory(`${value.account.gameName}#${value.account.tagLine}`, value.platform, value.year, value.account.puuid);
-        if (cached) value = cached;
+        const cached = await readHistory(`${value.account.gameName}#${value.account.tagLine}`, value.platform, value.year, value.account.puuid, true);
+        if (cached) value = { ...cached, account: value.account };
       }
       await runScan(value);
     });
@@ -273,8 +282,7 @@
     markNotice = `${name} ${wasMarked ? 'unmarked' : 'marked'} as premade.`;
     if (!storageError) {
       try {
-        localStorage.setItem(storageKey, JSON.stringify(markedPremades));
-        localStorage.setItem(unmarkedStorageKey, JSON.stringify(unmarkedPremades));
+        localStorage.setItem(storageKey, JSON.stringify({ marked: markedPremades, unmarked: unmarkedPremades }));
       } catch {
         storageError = 'Browser storage is unavailable. Premade changes apply only in this tab until you reload.';
       }
@@ -311,7 +319,7 @@
 <svelte:window onkeydown={focusSearch} />
 
 <svelte:head>
-  <title>Familiar Players | LoL Encounter Tracker</title>
+  <title>Rift Regulars | LoL Encounter Tracker</title>
   <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
   <link rel="icon" href="/favicon.png" type="image/png" sizes="48x48" />
   <link rel="preload" href="/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
@@ -321,7 +329,7 @@
 {#snippet results(events: Encounter[])}
   {@const result = resultSummary(events)}
   {#if events.length}
-    <span class="record-cell"><span class="result-win">{result.wins}W</span><span class="record-divider">/</span><span class="result-loss">{result.losses}L</span></span>
+    <span class="record-cell" title={result.winRate === null ? 'Win rate unavailable' : `${result.winRate}% win rate`}><span class="result-win">{result.wins}W</span><span class="record-divider">/</span><span class="result-loss">{result.losses}L</span></span>
     {#if result.unknown}<span class="unknown-results">{result.unknown} unknown</span>{/if}
   {:else}
     <span class="text-muted-foreground" aria-label="No games">—</span>
@@ -330,11 +338,16 @@
 
 <a class="skip-link" href="#main-content">Skip to players</a>
 <header class="app-header">
-  <div class="header-inner">
-    <a class="wordmark" href="/" aria-label="Familiar Players home">
-      <img class="brand-symbol" src="/brand-logo.png" alt="" width="56" height="56" />Familiar Players
+  <div class="header-inner player-header">
+    <a class="wordmark" href="/" aria-label="Rift Regulars home">
+      <img class="brand-symbol" src="/brand-logo.png" alt="" width="56" height="56" />Rift Regulars
     </a>
-    <div class="account-info"><Badge variant="outline">{regions[platform].label}</Badge><span>{summary?.account ?? 'Player lookup'}</span><a href="/">Change player</a></div>
+    <PlayerSearch compact />
+    <div class="account-info" aria-label="Current account">
+      <SummonerPortrait icon={scanPlayerIcon} name={summary?.account ?? page.params.riotId ?? ''} />
+      <span>{currentAccount.gameName}<span class="player-tag">#{currentAccount.tagLine}</span></span>
+      <Badge variant="outline">{regions[platform].label}</Badge>
+    </div>
   </div>
 </header>
 
@@ -347,25 +360,24 @@
       <h1 id="scan-title">{refreshError ? 'Scan paused' : 'Scanning match history'}</h1>
       <div class="scan-player">
         <SummonerPortrait icon={scanPlayerIcon} name={summary?.account ?? page.params.riotId ?? ''} />
-        <p>{summary?.account ?? page.params.riotId} <span class="text-muted-foreground">· {regions[platform].label}</span></p>
+         <p>{currentAccount.gameName}<span class="player-tag">#{currentAccount.tagLine}</span> <span class="text-muted-foreground">· {regions[platform].label}</span></p>
       </div>
       <p class="scan-status" role="status">{refreshError || progress || 'Opening saved history…'}</p>
       {#if summary && summary.coverage.listed}
         <progress class="scan-progress" max={summary.coverage.listed} value={(history?.matches.length ?? 0) + (history?.excluded?.length ?? 0)} aria-label="Matches processed"></progress>
-        <p class="text-muted-foreground">{(history?.matches.length ?? 0) + (history?.excluded?.length ?? 0)} / {summary.coverage.listed} matches processed{#if history?.excluded?.length} ({history.excluded.length} excluded){/if}</p>
+        <p class="text-muted-foreground">{(history?.matches.length ?? 0) + (history?.excluded?.length ?? 0)} / {summary.coverage.listed} matches processed</p>
       {/if}
       {#if cacheError}<p class="lookup-error" role="alert">{cacheError}</p>{/if}
       {#if !busy && refreshError}
         <div class="scan-actions">
           {#if history}<Button onclick={reload}>Retry scan</Button>{/if}
           {#if history?.matches.length}<Button variant="outline" onclick={showHistory}>View partial history</Button>{/if}
-          <Button href="/" variant="ghost">Back to search</Button>
         </div>
       {/if}
     </section>
   {:else}
   <section class="workspace-intro">
-    <h1 id="history-heading" tabindex="-1">Know the names you keep seeing on the Rift.</h1>
+    <h1 id="history-heading" tabindex="-1">Know the names you keep seeing on Summoner’s Rift.</h1>
     <div class="refresh-actions">
       <p class="refresh-info" role="status">{refreshMessage}</p>
       <Button variant="outline" onclick={reload} disabled={busy || !ready}>
@@ -425,12 +437,11 @@
     <p class="sr-only" role="status">{players.length} repeated players match your filters.</p>
     {#if !summary}
       <Empty.Root>
-        <Empty.Header><Empty.Title>{busy ? 'Finding your match history' : 'Choose a player to get started'}</Empty.Title><Empty.Description>{busy ? 'The first scan takes longer. Future refreshes reuse matches saved in this browser.' : 'Enter a player name, #TAG, and server on the home page.'}</Empty.Description></Empty.Header>
-        <Empty.Content><Button href="/" variant="outline">Back to search</Button></Empty.Content>
+        <Empty.Header><Empty.Title>{busy ? 'Finding your match history' : 'Choose a player to get started'}</Empty.Title><Empty.Description>{busy ? 'The first scan takes longer. Future refreshes reuse matches saved in this browser.' : 'Enter a player name and #TAG in the header search.'}</Empty.Description></Empty.Header>
       </Empty.Root>
     {:else if !players.length}
       <Empty.Root>
-        <Empty.Header><Empty.Title>{busy ? 'Scanning for familiar players' : 'No players match these filters'}</Empty.Title><Empty.Description>{busy ? 'Repeated players will appear as games are downloaded.' : 'Try another name or queue, a wider Last seen range, or turn on Include premades.'}</Empty.Description></Empty.Header>
+        <Empty.Header><Empty.Title>{busy ? 'Scanning for Rift Regulars' : 'No players match these filters'}</Empty.Title><Empty.Description>{busy ? 'Repeated players will appear as games are downloaded.' : 'Try another name or queue, a wider Last seen range, or turn on Include premades.'}</Empty.Description></Empty.Header>
       </Empty.Root>
     {:else}
       <div class="roster-table">
@@ -540,10 +551,9 @@
           <p>{summary.matches} indexed games, from {formatDate(summary.earliest)} to {formatDate(summary.latest)}.</p>
           <p class="coverage-scanned">Scanned on {new Date(summary.updated).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')}.</p>
         </div>
-        {#if history?.excluded?.length}<p>Excluded empty records: {history.excluded.join(', ')}.</p>{/if}
       </section>
     {/if}
-    <p>Familiar Players is not endorsed by Riot Games and does not reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
+    <p>Rift Regulars is not endorsed by Riot Games and does not reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
   </footer>
   {/if}
 </main>

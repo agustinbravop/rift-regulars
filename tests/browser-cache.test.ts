@@ -156,9 +156,10 @@ test('cache reads preserve legacy rows, use account/year keys, and reject corrup
     assert.equal(transferred?.platform, 'EUW1');
     assert.equal(transferred?.listed, false);
     assert.equal(transferred?.matches.length, 2);
-    const direct = await readHistory('Agus Brr#ARG', 'LA2', year);
+    const direct = await readHistory('Agus Brr#ARG', undefined, year);
     assert.equal(direct?.platform, 'NA1');
     assert.equal(direct?.listed, true);
+    assert.equal(await readHistory('Not cached#TAG', undefined, year), null);
     assert.equal(await readHistory('Agus Brr#ARG', 'EUW1', year).then(h => h?.matches.length), 2);
     assert.equal(await readHistory('Not cached#TAG', 'LA2', year), null);
     assert.ok(!readKeys.includes(unrelated));

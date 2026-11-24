@@ -24,7 +24,7 @@ Create a `.env` file containing your Riot development key:
 RIOT_API_KEY=your-development-key
 ```
 
-Enter **Player name#TAG** and click **Search** (or press Enter). The account and active server are checked before navigation; lookup errors appear below the input. Valid players open `/player/Name%23TAG?server=LA2` with their detected server. The first scan has its own loading view, with listing/download progress, and automatically reveals the recurring-player table when complete. Keep the tab open during the scan; retry resumes missing downloads after an interruption. Partial saved history can also be viewed explicitly.
+Enter **Player name#TAG** and click **Search** (or press Enter). The account and active server are checked before navigation; lookup errors appear below the input. Valid players open `/player/Name%23TAG`; the detected server is kept in navigation state and browser history, not the URL. The first scan has its own loading view, with listing/download progress, and automatically reveals the recurring-player table when complete. Keep the tab open during the scan; retry resumes missing downloads after an interruption. Partial saved history can also be viewed explicitly.
 
 Opening a player link or recent entry with complete browser-cached history shows results without Riot requests. Submitted searches in both landing and header rediscover the current server before navigating, even when history is cached. Incomplete caches resume in the scan view. **Refresh** lists history again and downloads only missing matches. The browser never receives the API key. Development keys expire; a 403 means the server owner must renew the key.
 

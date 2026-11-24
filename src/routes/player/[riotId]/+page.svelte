@@ -19,6 +19,7 @@
   import * as Table from '#lib/components/ui/table/index.js';
   import { Switch } from '#lib/components/ui/switch/index.js';
   import { Badge } from '#lib/components/ui/badge/index.js';
+  import { Skeleton } from '#lib/components/ui/skeleton/index.js';
   import { Button } from '#lib/components/ui/button/index.js';
   import ChampionPortrait from '#lib/components/ChampionPortrait.svelte';
   import { championLabel } from '#lib/champions.ts';
@@ -137,16 +138,17 @@
   async function openPlayer() {
     busy = true;
     try {
-      platform = parsePlatform(page.url.searchParams.get('server'));
       const { gameName, tagLine } = parseRiotId(page.params.riotId);
       const riotId = `${gameName}#${tagLine}`;
-      const fromLanding = page.state.platform === platform ? page.state.account : undefined;
+      const fromLanding = page.state.account;
       let account = fromLanding &&
         `${fromLanding.gameName}#${fromLanding.tagLine}`.toLowerCase() === riotId.toLowerCase()
         ? parseAccount(fromLanding) : null;
+      const knownPlatform = account && page.state.platform ? parsePlatform(page.state.platform) : undefined;
+      if (knownPlatform) platform = knownPlatform;
       let cached: History | null = null;
       try {
-        cached = await readHistory(riotId, platform, new Date().getUTCFullYear(), account?.puuid,
+        cached = await readHistory(riotId, knownPlatform, new Date().getUTCFullYear(), account?.puuid,
           !!account && page.state.discovered === true);
       }
       catch { cacheError = 'Saved browser history could not be read. This scan will only be available in this tab.'; }
@@ -352,9 +354,7 @@
 </header>
 
 <main id="main-content" class:scan-page={scanning && !checkingCache} tabindex="-1">
-  {#if checkingCache}
-    <p class="sr-only" role="status">Opening saved history…</p>
-  {:else if scanning}
+  {#if scanning && !checkingCache}
     <section class="scan-screen" aria-labelledby="scan-title" aria-busy={busy}>
       {#if busy}<RefreshCw class="scan-icon refreshing" aria-hidden="true" />{/if}
       <h1 id="scan-title">{refreshError ? 'Scan paused' : 'Scanning match history'}</h1>
@@ -380,9 +380,9 @@
     <h1 id="history-heading" tabindex="-1">Know the names you keep seeing on Summoner’s Rift.</h1>
     <div class="refresh-actions">
       <p class="refresh-info" role="status">{refreshMessage}</p>
-      <Button variant="outline" onclick={reload} disabled={busy || !ready}>
-        <span class="refresh-indicator" class:refreshing={busy} aria-hidden="true"><RefreshCw data-icon="inline-start" /></span>
-        {busy ? 'Refreshing…' : 'Refresh'}
+      <Button variant="outline" onclick={reload} disabled={checkingCache || busy || !ready}>
+        <span class="refresh-indicator" class:refreshing={busy && !checkingCache} aria-hidden="true"><RefreshCw data-icon="inline-start" /></span>
+        {busy && !checkingCache ? 'Refreshing…' : 'Refresh'}
       </Button>
     </div>
   </section>
@@ -434,18 +434,22 @@
       </Field.Group>
     </div>
 
+    {#if checkingCache}
+      <p class="sr-only" role="status">Opening saved history…</p>
+    {:else}
     <p class="sr-only" role="status">{players.length} repeated players match your filters.</p>
-    {#if !summary}
+    {/if}
+    {#if !summary && !checkingCache}
       <Empty.Root>
         <Empty.Header><Empty.Title>{busy ? 'Finding your match history' : 'Choose a player to get started'}</Empty.Title><Empty.Description>{busy ? 'The first scan takes longer. Future refreshes reuse matches saved in this browser.' : 'Enter a player name and #TAG in the header search.'}</Empty.Description></Empty.Header>
       </Empty.Root>
-    {:else if !players.length}
+    {:else if !players.length && !checkingCache}
       <Empty.Root>
         <Empty.Header><Empty.Title>{busy ? 'Scanning for Rift Regulars' : 'No players match these filters'}</Empty.Title><Empty.Description>{busy ? 'Repeated players will appear as games are downloaded.' : 'Try another name or queue, a wider Last seen range, or turn on Include premades.'}</Empty.Description></Empty.Header>
       </Empty.Root>
     {:else}
       <div class="roster-table">
-        <Table.Root class="player-table" aria-label="Repeated players, with sortable columns">
+        <Table.Root class="player-table" aria-label="Repeated players, with sortable columns" aria-busy={checkingCache}>
           <colgroup>
             <col class="roster-name-column" />
             <col class="roster-champions-column" />
@@ -458,7 +462,7 @@
             <Table.Row>
               {#each columns as column (column.key)}
                 <Table.Head aria-sort={sortColumn === column.key ? sortDirection === 'asc' ? 'ascending' : 'descending' : 'none'}>
-                  <Button variant="ghost" class="column-sort" onclick={() => sortBy(column.key)} disabled={!ready} title={column.hint ?? `Sort by ${column.label.toLowerCase()}`}>
+                  <Button variant="ghost" class="column-sort" onclick={() => sortBy(column.key)} disabled={checkingCache || !ready} title={column.hint ?? `Sort by ${column.label.toLowerCase()}`}>
                     {column.label}
                     {#if sortColumn === column.key}
                       {#if sortDirection === 'asc'}<ArrowUp data-icon="inline-end" aria-hidden="true" />{:else}<ArrowDown data-icon="inline-end" aria-hidden="true" />{/if}
@@ -470,6 +474,31 @@
             </Table.Row>
           </Table.Header>
           <Table.Body>
+            {#if checkingCache}
+              {#each { length: 8 } as _, index (index)}
+                <Table.Row data-player-row aria-hidden="true">
+                  <Table.Cell>
+                    <div class="flex min-h-12 items-center gap-2.5">
+                      <ChevronRight class="size-5 shrink-0 text-muted-foreground" />
+                      <Skeleton class="size-11 shrink-0 rounded-full" />
+                      <Skeleton class="h-4 w-28 max-w-full" />
+                    </div>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <div class="flex items-center">
+                      <Skeleton class="size-12 shrink-0" />
+                      <Skeleton class="-ml-2 size-[38px] shrink-0" />
+                      <Skeleton class="-ml-2 size-7 shrink-0" />
+                    </div>
+                  </Table.Cell>
+                  <Table.Cell><Skeleton class="h-4 w-8" /></Table.Cell>
+                  <Table.Cell><Skeleton class="h-4 w-20 max-w-full" /></Table.Cell>
+                  <Table.Cell><Skeleton class="h-4 w-20 max-w-full" /></Table.Cell>
+                  <Table.Cell><Skeleton class="h-4 w-24 max-w-full" /></Table.Cell>
+                  <Table.Cell class="premade-action-cell" />
+                </Table.Row>
+              {/each}
+            {:else if summary}
             {#each roster.items as player (player.id)}
               {@const side = stats(player.encounters)}
               <Table.Row
@@ -530,21 +559,31 @@
                 </Table.Row>
               {/if}
             {/each}
+            {/if}
           </Table.Body>
         </Table.Root>
       </div>
       <div class="roster-pagination">
+        {#if checkingCache}
+          <Skeleton class="h-4 w-36" aria-hidden="true" />
+          <div>
+            <Button variant="outline" size="icon" aria-label="Previous player page" disabled><ChevronLeft aria-hidden="true" /></Button>
+            <Skeleton class="h-4 w-20" aria-hidden="true" />
+            <Button variant="outline" size="icon" aria-label="Next player page" disabled><ChevronRight aria-hidden="true" /></Button>
+          </div>
+        {:else}
         <span>{roster.start + 1}–{roster.end} of {players.length} players</span>
         <div>
           <Button variant="outline" size="icon" aria-label="Previous player page" disabled={!ready || roster.index === 0} onclick={() => changePage(roster.index - 1)}><ChevronLeft aria-hidden="true" /></Button>
           <span aria-live="polite">Page {roster.index + 1} of {roster.pages}</span>
           <Button variant="outline" size="icon" aria-label="Next player page" disabled={!ready || roster.index + 1 >= roster.pages} onclick={() => changePage(roster.index + 1)}><ChevronRight aria-hidden="true" /></Button>
         </div>
+        {/if}
       </div>
     {/if}
   </section>
 
-  <footer class="app-footer">
+  <section class="app-footer" aria-label="Saved history">
     {#if summary}
       <section class="coverage-details" aria-label="History coverage">
         <div class="coverage-dates">
@@ -553,7 +592,6 @@
         </div>
       </section>
     {/if}
-    <p>Rift Regulars is not endorsed by Riot Games and does not reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
-  </footer>
+  </section>
   {/if}
 </main>

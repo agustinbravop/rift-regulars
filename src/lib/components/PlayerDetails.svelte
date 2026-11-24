@@ -31,7 +31,7 @@
   const columns: { key: MatchSort; label: string; hint?: string }[] = [
     { key: 'champion', label: 'They played', hint: 'Sort by their champion name' },
     { key: 'myChampion', label: 'You played', hint: 'Sort by your champion name' },
-    { key: 'result', label: 'Result', hint: 'Sort by win, loss, remake, then unknown' },
+    { key: 'result', label: 'Your result', hint: 'Sort by your win, loss, remake, then unknown' },
     { key: 'queue', label: 'Queue' },
     { key: 'at', label: 'Date' },
     { key: 'match', label: 'Match ID' }
@@ -104,7 +104,7 @@
   </ul>
   {#if hiddenChampions.length}
     <div class="champion-overflow" aria-label={`${hiddenChampions.length} more champions, ${hiddenGames} ${hiddenGames === 1 ? 'game' : 'games'}`}>
-      <span>… {hiddenChampions.length} more</span>
+      <span>{hiddenChampions.length} more...</span>
       <span>{hiddenGames} {hiddenGames === 1 ? 'game' : 'games'}</span>
     </div>
   {/if}
@@ -141,7 +141,7 @@
       </Table.Row>
     </Table.Header>
     <Table.Body>
-      {#each (showAllMatches ? matches : matches.slice(0, 5)) as event (event.match)}
+      {#each (showAllMatches ? matches : matches.slice(0, 6)) as event (event.match)}
         <Table.Row>
           <Table.Cell>
             <div class="champion-performance">
@@ -175,7 +175,7 @@
     </Table.Body>
   </Table.Root>
 </section>
-{#if player.encounters.length > 5 || champions.length > championLimit || showAllMatches}
+{#if player.encounters.length > 6 || champions.length > championLimit || showAllMatches}
   <div class="details-footer" class:all-matches={showAllMatches}>
     {#if showAllMatches}
       <Button variant="ghost" class="more-matches" aria-expanded="true" onclick={collapseMatches}>Show less</Button>

@@ -19,14 +19,38 @@ test('search feedback uses one persistent toaster and retains accessible input e
   assert.ok(!search.includes('class="recent-storage-error"'));
 });
 
+test('the full-height shell keeps the footer after content and cache loading retains dashboard controls', async () => {
+  const layout = await readFile(new URL('../src/routes/+layout.svelte', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../src/routes/layout.css', import.meta.url), 'utf8');
+  const player = await readFile(new URL('../src/routes/player/[riotId]/+page.svelte', import.meta.url), 'utf8');
+  assert.match(layout, /class="site-shell"[\s\S]*class="site-content"[\s\S]*@render children\(\)[\s\S]*<SiteFooter/);
+  assert.match(css, /\.site-shell\s*\{[^}]*min-height: 100dvh;[^}]*display: flex;[^}]*flex-direction: column;/);
+  assert.match(css, /\.site-content\s*\{[^}]*flex: 1;/);
+  assert.match(player, /\{#if scanning && !checkingCache\}[\s\S]*\{:else\}\s*<section class="workspace-intro">/);
+  assert.ok(player.includes('disabled={checkingCache || busy || !ready}'));
+  assert.match(player, /class="roster-filters"[\s\S]*\{#if checkingCache\}\s*<p class="sr-only" role="status">Opening saved history/);
+});
+
+test('cache loading shares real table headers and preserves all seven columns with skeleton rows', async () => {
+  const player = await readFile(new URL('../src/routes/player/[riotId]/+page.svelte', import.meta.url), 'utf8');
+  assert.equal((player.match(/<Table.Header>/g) ?? []).length, 1);
+  assert.ok(player.includes('aria-busy={checkingCache}'));
+  assert.ok(player.includes('disabled={checkingCache || !ready}'));
+  const skeletonRows = player.slice(player.indexOf('<Table.Body>'), player.indexOf('{:else if summary}'));
+  assert.ok(skeletonRows.includes('{ length: 8 }'));
+  assert.ok(skeletonRows.includes('data-player-row aria-hidden="true"'));
+  assert.equal((skeletonRows.match(/<Table.Cell\b/g) ?? []).length, 7);
+  assert.match(player, /class="roster-pagination">\s*\{#if checkingCache\}[\s\S]*<Skeleton/);
+});
+
 test('player URLs put the complete Riot ID in one encoded path segment', () => {
-  assert.equal(playerUrl('Agus Brr#ARG', 'LA2'), '/player/Agus%20Brr%23ARG?server=LA2');
-  const url = new URL(playerUrl('Player / ?#EUW', 'EUW1'), 'https://example.com');
+  assert.equal(playerUrl('Agus Brr#ARG'), '/player/Agus%20Brr%23ARG');
+  const url = new URL(playerUrl('Player / ?#EUW'), 'https://example.com');
   assert.equal(url.pathname.split('/').length, 3);
   assert.equal(decodeURIComponent(url.pathname.split('/')[2]), 'Player / ?#EUW');
-  assert.equal(url.searchParams.get('server'), 'EUW1');
+  assert.equal(url.search, '');
   assert.equal(url.hash, '');
-  assert.throws(() => playerUrl('Missing tag', 'LA2'));
+  assert.throws(() => playerUrl('Missing tag'));
 });
 
 test('account lookup posts the selected server and returns the resolved identity', async () => {

@@ -42,7 +42,8 @@ test('discovers without a server, validates upstream identity, and distinguishes
     accountStatus = 404;
     await assert.rejects(historyRequest(input, 'synthetic-only'), /Player not found/);
     accountStatus = 403;
-    await assert.rejects(historyRequest(input, 'synthetic-only'), /rejected/);
+    await assert.rejects(historyRequest(input, 'synthetic-only'),
+      e => e instanceof RiotError && e.status === 403 && /temporarily unavailable/.test(e.message));
     accountStatus = 200;
     accountValue = { ...account, puuid: '../../bad' };
     await assert.rejects(historyRequest(input, 'synthetic-only'), /Unexpected account identity/);

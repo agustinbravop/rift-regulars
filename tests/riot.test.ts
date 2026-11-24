@@ -23,13 +23,16 @@ test('paces requests, sends key in header, and honors Retry-After', async () => 
   assert.equal(calls, 2);
 });
 
-test('expired key fails immediately and never logs its value', async () => {
-  let calls = 0;
-  const request: typeof fetch = async () => { calls++; return new Response('', { status: 403 }); };
-  await assert.rejects(new Riot('private-test-value', request, async () => {}).get('/test'),
-    error => error instanceof Error && error.message === 'API key was rejected. Renew your development key.');
-  assert.equal(calls, 1);
-  assert.throws(() => new Riot(''), /Set RIOT_API_KEY/);
+test('credential errors fail immediately with visitor-safe instructions', async () => {
+  const message = 'Riot access is temporarily unavailable. Please try again later or contact support.';
+  for (const status of [401, 403]) {
+    let calls = 0;
+    const request: typeof fetch = async () => { calls++; return new Response('', { status }); };
+    await assert.rejects(new Riot('private-test-value', request, async () => {}).get('/test'),
+      error => error instanceof Error && error.message === message);
+    assert.equal(calls, 1);
+  }
+  assert.throws(() => new Riot(''), { message });
 });
 
 test('bounds retries for server errors and connection failures', async () => {
@@ -41,7 +44,12 @@ test('bounds retries for server errors and connection failures', async () => {
       return new Response('', { status: 503 });
     };
     await assert.rejects(new Riot('test', request, async () => {}).get('/test'),
-      network ? /Cannot reach Riot/ : /retries exhausted/);
+      error => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, network ? /Cannot reach Riot Games/ : /Riot Games is temporarily unavailable/);
+        assert.doesNotMatch(error.message, /bun run|API key|\.env|RIOT_API_KEY/i);
+        return true;
+      });
     assert.equal(calls, 6);
   }
 });

@@ -9,11 +9,11 @@ export function matchUrl(match: string) {
 }
 
 export function championRowsThatFit(tableHeight: number, headerHeight: number, count: number, matchCount: number) {
-  if (count < 5 && matchCount <= 5) return count;
+  if (count < 5 && matchCount <= 6) return count;
   // Rows are 48px tall with an 8px gap; reserve 28px for the overflow summary only when needed.
   const available = Math.max(0, tableHeight - headerHeight);
   if (count * 56 - 8 <= available) return count;
-  return Math.max(0, Math.floor((available - 28) / 56));
+  return Math.max(Math.min(3, count), Math.floor((available - 28) / 56));
 }
 import type { Encounter } from './types.ts';
 import { championLabel } from './champions.ts';

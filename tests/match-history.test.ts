@@ -42,7 +42,7 @@ test('links supported regions to League of Graphs without accepting malformed ID
 test('fits as many champion rows as possible, reserving a summary only for overflow', () => {
   assert.equal(championRowsThatFit(500, 200, 5, 6), 5);
   assert.equal(championRowsThatFit(500, 200, 6, 6), 4);
-  assert.equal(championRowsThatFit(0, 200, 7, 7), 0);
+  assert.equal(championRowsThatFit(0, 200, 7, 7), 3);
   assert.equal(championRowsThatFit(200, 200, 0, 0), 0);
   assert.equal(championRowsThatFit(248, 200, 1, 6), 1);
   assert.equal(championRowsThatFit(508, 200, 6, 6), 5);
@@ -53,6 +53,7 @@ test('fits as many champion rows as possible, reserving a summary only for overf
 test('always shows fewer than five champions when the match list needs no shortening', () => {
   assert.equal(championRowsThatFit(200, 200, 2, 2), 2);
   assert.equal(championRowsThatFit(200, 200, 4, 5), 4);
-  assert.equal(championRowsThatFit(200, 200, 4, 6), 0);
-  assert.equal(championRowsThatFit(200, 200, 5, 5), 0);
+  assert.equal(championRowsThatFit(200, 200, 4, 6), 4);
+  assert.equal(championRowsThatFit(200, 200, 4, 7), 3);
+  assert.equal(championRowsThatFit(200, 200, 5, 5), 3);
 });

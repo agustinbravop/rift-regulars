@@ -73,7 +73,7 @@
     updateRecents(players => rememberPlayer(players, player));
     busy = true;
     try {
-      await goto(playerUrl(`${account.gameName}#${account.tagLine}`, platform), { state: { account, platform } });
+      await goto(playerUrl(`${account.gameName}#${account.tagLine}`), { state: { account, platform } });
     } catch {
       error = 'Could not open this player. Try again.';
     } finally { busy = false; }
@@ -115,7 +115,7 @@
         action: 'discover', riotId: `${gameName}#${tagLine}`
       }));
       updateRecents(players => rememberPlayer(players, { account, platform }));
-      await goto(playerUrl(`${account.gameName}#${account.tagLine}`, platform), {
+      await goto(playerUrl(`${account.gameName}#${account.tagLine}`), {
         state: { account, platform, discovered: true }
       });
     } catch (cause) {

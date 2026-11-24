@@ -25,7 +25,7 @@ export class Riot {
     routing: 'americas' | 'europe' | 'asia' | 'sea' = 'americas',
     limiter?: RiotRateLimiter
   ) {
-    if (!key.trim()) throw new Error('Set RIOT_API_KEY in your environment or rift_regulars/.env.');
+    if (!key.trim()) throw new Error('Riot access is temporarily unavailable. Please try again later or contact support.');
     this.key = key;
     this.request = request;
     this.pause = pause;
@@ -53,7 +53,7 @@ export class Riot {
         });
       } catch {
         this.signal?.throwIfAborted();
-        if (attempt === 5) throw new Error('Cannot reach Riot. Saved progress is safe; rerun bun run fetch.');
+        if (attempt === 5) throw new Error('Cannot reach Riot Games. Please try again shortly. Previously saved progress is kept in this browser.');
         await this.pause(1000 * 2 ** attempt);
         continue;
       }
@@ -61,8 +61,8 @@ export class Riot {
       if (response.ok) return response.json();
       if (response.status !== 429 && response.status < 500) {
         const messages: Record<number, string> = {
-          401: 'API key is invalid.',
-          403: 'API key was rejected. Renew your development key.',
+          401: 'Riot access is temporarily unavailable. Please try again later or contact support.',
+          403: 'Riot access is temporarily unavailable. Please try again later or contact support.',
           404: 'Account or match not found.'
         };
         throw new RiotError(messages[response.status] ?? `Riot returned HTTP ${response.status}.`, response.status);
@@ -76,6 +76,6 @@ export class Riot {
         await this.pause(wait);
       }
     }
-    throw new Error('Riot retries exhausted. Saved progress is safe; rerun bun run fetch.');
+    throw new Error('Riot Games is temporarily unavailable. Please try again shortly. Previously saved progress is kept in this browser.');
   }
 }

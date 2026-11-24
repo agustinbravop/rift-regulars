@@ -1,6 +1,6 @@
-import { parsePlatform, parseRiotId, type Platform } from './regions.ts';
+import { parseRiotId } from './regions.ts';
 
-export function playerUrl(riotId: string, platform: Platform) {
+export function playerUrl(riotId: string) {
   const { gameName, tagLine } = parseRiotId(riotId);
-  return `/player/${encodeURIComponent(`${gameName}#${tagLine}`)}?${new URLSearchParams({ server: parsePlatform(platform) })}`;
+  return `/player/${encodeURIComponent(`${gameName}#${tagLine}`)}`;
 }

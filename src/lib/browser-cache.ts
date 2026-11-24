@@ -115,14 +115,15 @@ export function mergeHistories(
 }
 
 export async function readHistory(
-  riotId: string, platform: Platform, year: number, puuid?: string, discovered = false
+  riotId: string, platform: Platform | undefined, year: number, puuid?: string, discovered = false
 ): Promise<History | null> {
   const db = await openCache();
   try {
     const store = db.transaction('histories', 'readonly').objectStore('histories');
     let identity = puuid;
+    let cachedPlatform = platform;
     if (!identity) {
-      const platforms = [platform, ...Object.keys(regions).filter(p => p !== platform) as Platform[]];
+      const platforms = (platform ? [platform, ...Object.keys(regions).filter(p => p !== platform)] : Object.keys(regions)) as Platform[];
       const keys = await Promise.all(platforms.map(p => cacheResult(store.index('lookup').getKey(lookupKey(riotId, p, year)))));
       const selectedKey = keys.find(key => key !== undefined);
       if (selectedKey === undefined) return null;
@@ -133,6 +134,7 @@ export async function readHistory(
         throw new Error('Wrong cached account.');
       }
       identity = selectedHistory.account.puuid;
+      cachedPlatform ??= selectedHistory.platform;
     }
     const keys = await cacheResult(store.getAllKeys());
     const relatedKeys = keys.filter(key => key === accountKey(year, identity) ||
@@ -148,7 +150,8 @@ export async function readHistory(
     });
     const canonical = related.find(r => r.key === accountKey(year, identity))?.history as History | undefined;
     return histories.length ? mergeHistories(histories,
-      discovered ? platform : canonical?.platform ?? platform, year, identity, canonical) : null;
+      discovered && platform ? platform : canonical?.platform ?? cachedPlatform ?? histories[histories.length - 1].platform,
+      year, identity, canonical) : null;
   } finally { db.close(); }
 }
 

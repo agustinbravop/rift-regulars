@@ -5,6 +5,8 @@
 - Use Bun for package commands. Run `bun run check`, `bun run test`, and `bun run build` after UI changes.
 - Follow `PRODUCT.md` and `DESIGN.md`. The user reviews live changes in Brave; do not use Playwright MCP unless requested.
 - Only the user runs the server. Do not start, stop, or restart it unless explicitly asked.
+- Keep visitor-facing errors actionable without developer instructions: never ask visitors to run CLI commands, edit environment files, or renew API keys. Credential/configuration problems belong to the operator; visitors should see temporary-unavailability and retry/contact guidance. Cover shared Riot error messages in `tests/riot.test.ts`.
+- Keep `/privacy` and `/terms` accurate to implemented data handling. The shared site footer carries legal links, the Riot disclaimer, and contact `agustinbravop1@gmail.com`.
 
 ## Runtime and implementation
 

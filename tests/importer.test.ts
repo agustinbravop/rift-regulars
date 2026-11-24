@@ -26,7 +26,7 @@ test('imports atomically, reuses cached matches, and preserves summary when auth
     assert.equal(summary.coverage.complete, true);
     await run('cached');
     const before = await readFile(summaryPath, 'utf8');
-    await assert.rejects(run('rejected'), /API key was rejected/);
+    await assert.rejects(run('rejected'), /Riot access is temporarily unavailable/);
     assert.equal(await readFile(summaryPath, 'utf8'), before);
     assert.ok((await readdir(join(directory, 'data', 'matches'))).every(p => p.endsWith('.json')));
   } finally {

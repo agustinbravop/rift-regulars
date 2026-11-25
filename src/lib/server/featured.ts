@@ -1,4 +1,4 @@
-import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, stat, unlink } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { randomUUID } from 'node:crypto';
@@ -33,6 +33,33 @@ async function atomicGzip(path: string, value: unknown) {
 async function readGzip(path: string): Promise<unknown | null> {
   try { return JSON.parse(gunzipSync(await readFile(path)).toString('utf8')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
+}
+
+async function snapshotStamp(path: string) {
+  const s = await stat(path, { bigint: true });
+  return [s.dev, s.ino, s.size, s.mtimeNs, s.ctimeNs].join(':');
+}
+
+async function readFeaturedCard(root: string, id: string, year: number) {
+  const path = file(root, id, year, 'public');
+  try {
+    const stamp = await snapshotStamp(path);
+    const card = await readGzip(file(root, id, year, 'card')) as {
+      version: number; id: string; year: number; stamp: string;
+      account: FeaturedProfile['account']; platform: FeaturedProfile['platform'];
+      icon?: number; matches: number;
+    } | null;
+    if (card && card.version === 1 && card.id === id && card.year === year &&
+      card.stamp === stamp && Number.isSafeInteger(card.matches) && card.matches >= 0 &&
+      (card.icon === undefined || (Number.isSafeInteger(card.icon) && card.icon >= 0))) {
+      const { account } = parseDiscovery(card);
+      if (await snapshotStamp(path) === stamp) {
+        return { account, icon: card.icon, matches: card.matches };
+      }
+    }
+  } catch { /* Validate legacy or replaced snapshots below; never trust stale card metadata. */ }
+  const profile = await readFeaturedProfile(root, id, year);
+  return profile ? { account: profile.account, icon: profile.icon, matches: profile.summary.matches } : null;
 }
 
 export async function saveFeaturedHistory(root: string, id: string, history: History) {
@@ -104,6 +131,13 @@ async function publishFeatured(root: string, id: string, history: History) {
     account: profile.account, platform: profile.platform
   });
   const publicBytes = await atomicGzip(file(root, id, history.year, 'public'), profile);
+  // Publish last: an interrupted sidecar write leaves the validated legacy read path available.
+  try {
+    await atomicGzip(file(root, id, history.year, 'card'), {
+      version: 1, id, year: history.year, stamp: await snapshotStamp(file(root, id, history.year, 'public')),
+      account: profile.account, platform: profile.platform, icon: profile.icon, matches: profile.summary.matches
+    });
+  } catch { /* The public commit succeeded; a sidecar failure only loses the fast path. */ }
   return { profile, publicBytes };
 }
 
@@ -158,10 +192,10 @@ export async function featuredPageData(riotId: string, root = featuredDir, year 
 
 export async function featuredCards(root = featuredDir, year = new Date().getUTCFullYear()) {
   return Promise.all(featuredAccounts.map(async entry => {
-    const profile = await readFeaturedProfile(root, entry.id, year);
+    const profile = await readFeaturedCard(root, entry.id, year);
     return {
       ...entry, riotId: profile ? `${profile.account.gameName}#${profile.account.tagLine}` : entry.riotId,
-      icon: profile?.icon, matches: profile?.summary.matches ?? null
+      icon: profile?.icon, matches: profile?.matches ?? null
     };
   }));
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile, rm, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { gzipSync, gunzipSync } from 'node:zlib';
@@ -38,6 +38,10 @@ test('featured persistence compacts, resumes failures, and retains the successfu
     const privateFile = join(root, `agurin-${year}.private.json.gz`);
     const publicFile = join(root, `agurin-${year}.public.json.gz`);
     const originalPublic = await readFile(publicFile);
+    const cardFile = join(root, `agurin-${year}.card.json.gz`);
+    const originalCard = await readFile(cardFile);
+    assert.equal(JSON.parse(gunzipSync(originalCard).toString()).matches, 2);
+    assert.equal((await featuredCards(root, year))[0].matches, 2);
     const persisted = JSON.parse(gunzipSync(await readFile(privateFile)).toString());
     assert.equal(persisted.matches.length, 2);
     assert.equal(persisted.matches[0].info.participants.length, 3);
@@ -53,12 +57,14 @@ test('featured persistence compacts, resumes failures, and retains the successfu
     failing = true;
     await assert.rejects(importFeatured('agurin', 'Synthetic#TEST', api, () => {}, root), /Synthetic failure/);
     assert.deepEqual(await readFile(publicFile), originalPublic);
+    assert.deepEqual(await readFile(cardFile), originalCard);
     assert.equal(JSON.parse(gunzipSync(await readFile(privateFile)).toString()).matches.length, 3);
     failing = false;
     await importFeatured('agurin', 'Synthetic#TEST', api, () => {}, root);
     assert.equal(requested.filter(id => id === 'LA2_4').length, 1);
     assert.equal((await loadFeatured('synthetic#test', root, year)).profile?.summary.matches, 4);
     assert.equal((await featuredCards(root, year))[0].riotId, 'Synthetic#TEST');
+    assert.equal((await featuredCards(root, year))[0].matches, 4);
     const lastPublic = await readFile(publicFile);
     const lastPrivate = await readFile(privateFile);
     const changedAccount = async <T>(): Promise<T> => ({
@@ -68,10 +74,57 @@ test('featured persistence compacts, resumes failures, and retains the successfu
     assert.deepEqual(await readFile(publicFile), lastPublic);
     assert.deepEqual(await readFile(privateFile), lastPrivate);
     await writeFile(publicFile, 'corrupt');
+    assert.equal((await featuredCards(root, year))[0].matches, null);
     assert.deepEqual(await loadFeatured('synthetic#test', root, year), { featured: true, profile: null });
     await writeFile(privateFile, 'corrupt');
     await assert.rejects(importFeatured('agurin', 'Synthetic#TEST', api, () => {}, root));
     assert.equal((await readFile(privateFile)).toString(), 'corrupt');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('card metadata refreshes, validates replacements and supports legacy snapshots and year rollover', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'rift-featured-'));
+  try {
+    const api = async <T>(body: Record<string, unknown>): Promise<T> => (
+      body.action === 'discover' ? { account, platform: 'LA2' } :
+        body.action === 'ids' ? ['LA2_1'] : game(1)
+    ) as T;
+    await importFeatured('agurin', 'Synthetic#TEST', api, () => {}, root);
+    const publicPath = join(root, `agurin-${year}.public.json.gz`);
+    const cardPath = join(root, `agurin-${year}.card.json.gz`);
+    const card = await readFile(cardPath);
+    assert.ok(card.length < 1024);
+    const parse = JSON.parse;
+    const parsing = t.mock.method(JSON, 'parse', (text: string, ...args: []) => {
+      assert.doesNotMatch(text, /"summary":/, 'optimized cards must not parse public summaries');
+      return parse(text, ...args);
+    });
+    assert.equal((await featuredCards(root, year))[0].matches, 1);
+    parsing.mock.restore();
+    const metadata = parse(gunzipSync(card).toString());
+    for (const invalid of [
+      { version: 2 }, { id: 'other' }, { year: year - 1 }, { stamp: 'stale' },
+      { matches: -1 }, { icon: -1 }, { account: {} }, { platform: 'invalid' }
+    ]) {
+      await writeFile(cardPath, gzipSync(JSON.stringify({ ...metadata, ...invalid })));
+      assert.equal((await featuredCards(root, year))[0].matches, 1);
+    }
+    assert.equal((await featuredCards(root, year + 1))[0].matches, null);
+    await rm(cardPath);
+    assert.equal((await featuredCards(root, year))[0].matches, 1);
+    await writeFile(cardPath, 'corrupt sidecar');
+    assert.equal((await featuredCards(root, year))[0].matches, 1);
+    await writeFile(cardPath, card);
+    const profile = JSON.parse(gunzipSync(await readFile(publicPath)).toString());
+    profile.account.gameName = 'Renamed';
+    profile.summary.account = 'Renamed#TEST';
+    profile.summary.matches = 12;
+    await writeFile(publicPath, gzipSync(JSON.stringify(profile)));
+    assert.equal((await featuredCards(root, year))[0].matches, 12);
+    assert.equal((await featuredCards(root, year))[0].riotId, 'Renamed#TEST');
+    await rm(publicPath);
+    assert.equal((await featuredCards(root, year))[0].matches, null);
+    assert.equal((await loadFeatured('Synthetic#TEST', root, year)).featured, true);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -90,6 +143,21 @@ test('missing or corrupt featured profiles are unavailable, never trigger upstre
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('a failed optional card write preserves the successful public commit and cleans temporary files', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'rift-featured-'));
+  try {
+    await mkdir(join(root, `agurin-${year}.card.json.gz`));
+    const api = async <T>(body: Record<string, unknown>): Promise<T> => (
+      body.action === 'discover' ? { account, platform: 'LA2' } :
+        body.action === 'ids' ? ['LA2_1'] : game(1)
+    ) as T;
+    await importFeatured('agurin', 'Synthetic#TEST', api, () => {}, root);
+    assert.equal((await readFeaturedProfile(root, 'agurin', year))?.summary.matches, 1);
+    assert.equal((await featuredCards(root, year))[0].matches, 1);
+    assert.ok((await readdir(root)).every(name => !name.endsWith('.tmp') && name !== 'import.lock'));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('global import lock and interruption preserve checkpoints and do not publish incomplete data', async () => {
   const root = await mkdtemp(join(tmpdir(), 'rift-featured-'));
   try {
@@ -99,6 +167,7 @@ test('global import lock and interruption preserve checkpoints and do not publis
     await rm(join(root, 'import.lock'));
     await assert.rejects(importFeatured('agurin', 'Synthetic#TEST', api, () => {}, root, () => true), /interrupted/);
     assert.equal(await readFeaturedProfile(root, 'agurin', year), null);
+    assert.equal((await featuredCards(root, year))[0].matches, null);
     let interrupted = false;
     const partialApi = async <T>(body: Record<string, unknown>): Promise<T> => {
       if (body.action === 'discover') return { account, platform: 'LA2' } as T;

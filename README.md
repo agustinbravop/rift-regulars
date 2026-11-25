@@ -8,7 +8,7 @@ Built with SvelteKit, Svelte 5, TypeScript, shadcn-svelte, and Tailwind CSS v4.
 
 ## Run locally
 
-Requires **Bun 1.3.13+** and **Node.js 24+**.
+Requires **Bun 1.4.5+** (pinned package manager: **1.4.5**) and **Node.js 24+**.
 
 ```bash
 cd rift_regulars
@@ -56,6 +56,7 @@ Run **one named account at a time**, sequentially. The nine entries in `src/lib/
 - `data/featured/<id>-<year>.private.json.gz` is a resumable compact history, retaining every participant, including singleton encounters. No raw full-match payloads are saved.
 - `data/featured/<id>-<year>.public.json.gz` holds the resolved identity, platform, icon, exclusions, coverage and precomputed summary. Only this public envelope reaches visitors; private history files are not HTTP endpoints.
 - A small `<id>-<year>.identity.json.gz` preserves resolved aliases, including `--riot-id` overrides, so missing or corrupt public snapshots never turn those names into visitor-triggered imports.
+- A tiny atomic `<id>-<year>.card.json.gz` lets the homepage read identity, icon and availability without parsing full summaries. It is bound to the public file's device/inode, size and nanosecond modification/change times. Missing, corrupt or mismatched card metadata falls back to full validated public reads; missing/corrupt public data remains unavailable. Old snapshots work unchanged, but use the offline republish command below to gain the fast path. Moving/restoring snapshots can invalidate metadata; republish after restoring them. Do not edit published files in place.
 - Both use atomic replacement with private filesystem permissions. Listing pages, ten-download batches, completion and handled failures checkpoint progress. Re-running re-lists the current host and downloads missing games, retaining previously downloaded platforms for the same PUUID.
 - Only a completed import replaces the public snapshot. Failures retain the last successful snapshot. Corrupt checkpoints or a changed PUUID fail closed without overwriting data.
 - JSONL progress includes account key, phase, listed/downloaded/excluded/remaining counts, compressed bytes and final completion counts.
@@ -103,7 +104,11 @@ bun run build
 bun run start
 ```
 
-`bun run start` runs the built Node adapter on **127.0.0.1:8765**. Stop the dev server first. Use `bun run dev` for live editing; after rebuilding production, stop and restart `bun run start` yourself to load the new asset references. `bun run preview` is also available for local build inspection. Use `bun run test`, not `bun test`, to run the existing Node test suite.
+`bun run start` runs the official `@sveltejs/adapter-bun` production output on **127.0.0.1:8765**, overriding inherited host/port/socket settings. Stop the dev server first. Use `bun run dev` for live editing; after rebuilding production, stop and restart `bun run start` yourself to load the new asset references. `bun run preview` is also available for local build inspection. Use `bun run test`, not `bun test`, to run the existing Node test suite.
+
+Production builds explicitly run Vite under Bun, as required by the official adapter. This was verified with Bun 1.4.5; it does not establish that the previously failing Bun **dev SSR prebundle** path is fixed. Dev/preview, tests, and both operator importers still run under Node. Production disables Bun's connection-idle timeout so requests waiting in the shared Riot queue are not dropped after the default ten seconds. Operators can override this with `CONNECTION_IDLE_TIMEOUT` (seconds, 0 disables); account for queue/cooldown waits in any reverse proxy as well. SIGTERM drains requests with the adapter's default 30-second shutdown deadline; longer pending work can be interrupted and retried.
+
+Synthetic production RSS comparisons and reproduction commands: [Bun memory report](docs/bun-memory.md). No deployment changes are included; the public domain remains **riftregulars.agusbravo.dev**.
 
 Tests use synthetic fixtures in temporary directories. They never replace your imported account data.
 
@@ -117,5 +122,5 @@ Tests use synthetic fixtures in temporary directories. They never replace your i
 - Arena uses `playerSubteamId` when available; other squads count as opponents, not necessarily direct round opponents.
 - Current-game lookup is deferred.
 - `.env` and legacy `data/` stay private and gitignored. The dev server explicitly blocks filesystem access to both. Riot proxy requests require same-origin JSON, have bounded request bodies, and accept only validated fixed endpoint inputs.
-- The shared limiter assumes one Node process. This remains a local/self-hosted app, not a hardened public service: public deployment needs abuse controls and an appropriate Riot API key; multiple processes need shared rate limiting. Origin checks are not authentication.
+- The shared limiter assumes one server process. This remains a local/self-hosted app, not a hardened public service: public deployment needs abuse controls and an appropriate Riot API key; multiple processes need shared rate limiting. Origin checks are not authentication.
 - Match caches are device-local, not encrypted against other users of the same browser profile. No authentication. Not an official Riot product.

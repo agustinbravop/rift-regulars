@@ -10,7 +10,9 @@
 
 ## Runtime and implementation
 
-- Bun manages dependencies and script commands; Vite, the importer, tests, and production adapter use Node. Do not force `--bun` on Vite: it causes an SSR pre-bundle error with this toolchain.
+- Bun 1.4.5 manages dependencies and runs production builds/output through official `@sveltejs/adapter-bun` 1.0.2. Dev/preview Vite, importers and tests remain on Node 24+. The production Bun build is verified; do not force Bun on dev Vite, whose SSR prebundle previously failed. The adapter loads dynamically in `vite.config.ts` to avoid leaking Bun-only fetch types into Node/browser tests.
+- Production defaults to no connection-idle timeout because Riot queue/cooldown waits can exceed Bun's ten-second default; consider proxy timeouts too. Local start must force 127.0.0.1:8765 and clear SOCKET_PATH. Synthetic benchmarks may use isolated ephemeral ports only when explicitly authorized.
+- Homepage card sidecars are atomic, optional and bound to public snapshot stat identity. Legacy/stale/corrupt sidecars fall back to full validated profile reads, not cached parsed summaries. Offline republish migrates/restores the fast path; failed imports keep the last public snapshot.
 - Use `bun run test`, not `bun test`, for the Node test suite. Tests use synthetic fixtures in temporary directories, never imported account data.
 - Browser history uses IndexedDB database `rift-regulars` v1, keyed by platform, year, and PUUID. Retain all participants, including one-off encounters. Save atomic snapshots after each listing page, every ten downloads, completion, and handled failures.
 - Keep the shared serialized Riot queue and rolling-window limiter. Fallback budgets are 20 requests/second and 100 requests/120 seconds with a boundary margin; Riot headers update budgets and 429s establish shared `Retry-After` cooldowns. App usage combines regions conservatively; method limits are scoped by endpoint and region. Browser Web Locks serialize imports per account.

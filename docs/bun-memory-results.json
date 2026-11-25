@@ -1,0 +1,500 @@
+{
+  "versions": {
+    "node": "v24.17.0",
+    "bun": "1.4.5",
+    "bunExecutable": "/tmp/opencode/rift-bun-1.4.5/package/bin/bun"
+  },
+  "fixtures": [
+    {
+      "id": "agurin",
+      "matches": 320,
+      "compressed": 11319,
+      "uncompressed": 490904,
+      "cardCompressed": 187
+    },
+    {
+      "id": "thebausffs",
+      "matches": 380,
+      "compressed": 13132,
+      "uncompressed": 580038,
+      "cardCompressed": 188
+    },
+    {
+      "id": "tyler1",
+      "matches": 440,
+      "compressed": 15219,
+      "uncompressed": 669164,
+      "cardCompressed": 184
+    },
+    {
+      "id": "caedrel",
+      "matches": 500,
+      "compressed": 16642,
+      "uncompressed": 758295,
+      "cardCompressed": 179
+    },
+    {
+      "id": "nemesis",
+      "matches": 560,
+      "compressed": 19574,
+      "uncompressed": 847425,
+      "cardCompressed": 184
+    },
+    {
+      "id": "drututt",
+      "matches": 620,
+      "compressed": 20736,
+      "uncompressed": 936555,
+      "cardCompressed": 179
+    },
+    {
+      "id": "aloisnl",
+      "matches": 680,
+      "compressed": 23409,
+      "uncompressed": 1025685,
+      "cardCompressed": 180
+    },
+    {
+      "id": "dantes",
+      "matches": 740,
+      "compressed": 25760,
+      "uncompressed": 1114814,
+      "cardCompressed": 187
+    },
+    {
+      "id": "crownie",
+      "matches": 800,
+      "compressed": 27638,
+      "uncompressed": 1203945,
+      "cardCompressed": 181
+    }
+  ],
+  "samplingMs": 20,
+  "containerMetrics": "not collected; process RSS only",
+  "results": [
+    {
+      "label": "baseline-node-adapter/node",
+      "phases": [
+        {
+          "name": "idle",
+          "VmRSS": 82694144,
+          "VmHWM": 82694144
+        },
+        {
+          "name": "homepage",
+          "requests": 40,
+          "concurrency": 1,
+          "elapsedMs": 2962.728342,
+          "VmRSS": 229916672,
+          "VmHWM": 236466176
+        },
+        {
+          "name": "largest-profile",
+          "requests": 10,
+          "concurrency": 1,
+          "elapsedMs": 1079.847022,
+          "VmRSS": 293584896,
+          "VmHWM": 319754240
+        },
+        {
+          "name": "concurrent-homepage",
+          "requests": 24,
+          "concurrency": 4,
+          "elapsedMs": 1564.233295,
+          "VmRSS": 369688576,
+          "VmHWM": 374284288
+        },
+        {
+          "name": "concurrent-profile",
+          "requests": 8,
+          "concurrency": 4,
+          "elapsedMs": 759.3015140000007,
+          "VmRSS": 386379776,
+          "VmHWM": 393289728
+        },
+        {
+          "name": "post-load-3s",
+          "VmRSS": 386379776,
+          "VmHWM": 393289728
+        }
+      ],
+      "sampledPeak": 387284992,
+      "termination": [
+        0,
+        null
+      ],
+      "smoke": "SSR, assets, same-origin no-key 400, SIGTERM passed"
+    },
+    {
+      "label": "baseline-node-adapter/bun",
+      "phases": [
+        {
+          "name": "idle",
+          "VmRSS": 47734784,
+          "VmHWM": 50143232
+        },
+        {
+          "name": "homepage",
+          "requests": 40,
+          "concurrency": 1,
+          "elapsedMs": 2090.5764610000006,
+          "VmRSS": 122675200,
+          "VmHWM": 129069056
+        },
+        {
+          "name": "largest-profile",
+          "requests": 10,
+          "concurrency": 1,
+          "elapsedMs": 944.8482240000012,
+          "VmRSS": 164515840,
+          "VmHWM": 177463296
+        },
+        {
+          "name": "concurrent-homepage",
+          "requests": 24,
+          "concurrency": 4,
+          "elapsedMs": 1146.5276410000006,
+          "VmRSS": 150249472,
+          "VmHWM": 177463296
+        },
+        {
+          "name": "concurrent-profile",
+          "requests": 8,
+          "concurrency": 4,
+          "elapsedMs": 542.876182,
+          "VmRSS": 156938240,
+          "VmHWM": 177463296
+        },
+        {
+          "name": "post-load-3s",
+          "VmRSS": 94625792,
+          "VmHWM": 177463296
+        }
+      ],
+      "sampledPeak": 176222208,
+      "termination": [
+        0,
+        null
+      ],
+      "smoke": "SSR, assets, same-origin no-key 400, SIGTERM passed"
+    },
+    {
+      "label": "baseline-node-adapter/bun-smol",
+      "phases": [
+        {
+          "name": "idle",
+          "VmRSS": 48078848,
+          "VmHWM": 51793920
+        },
+        {
+          "name": "homepage",
+          "requests": 40,
+          "concurrency": 1,
+          "elapsedMs": 2229.045521,
+          "VmRSS": 129028096,
+          "VmHWM": 129814528
+        },
+        {
+          "name": "largest-profile",
+          "requests": 10,
+          "concurrency": 1,
+          "elapsedMs": 836.0360270000019,
+          "VmRSS": 162271232,
+          "VmHWM": 171511808
+        },
+        {
+          "name": "concurrent-homepage",
+          "requests": 24,
+          "concurrency": 4,
+          "elapsedMs": 1069.8669609999997,
+          "VmRSS": 152907776,
+          "VmHWM": 175382528
+        },
+        {
+          "name": "concurrent-profile",
+          "requests": 8,
+          "concurrency": 4,
+          "elapsedMs": 582.1818979999989,
+          "VmRSS": 154423296,
+          "VmHWM": 175382528
+        },
+        {
+          "name": "post-load-3s",
+          "VmRSS": 86556672,
+          "VmHWM": 175382528
+        }
+      ],
+      "sampledPeak": 175382528,
+      "termination": [
+        0,
+        null
+      ],
+      "smoke": "SSR, assets, same-origin no-key 400, SIGTERM passed"
+    },
+    {
+      "label": "optimized-node-adapter/node",
+      "phases": [
+        {
+          "name": "idle",
+          "VmRSS": 82825216,
+          "VmHWM": 82825216
+        },
+        {
+          "name": "homepage",
+          "requests": 40,
+          "concurrency": 1,
+          "elapsedMs": 333.2909850000033,
+          "VmRSS": 117194752,
+          "VmHWM": 117194752
+        },
+        {
+          "name": "largest-profile",
+          "requests": 10,
+          "concurrency": 1,
+          "elapsedMs": 1231.6292449999964,
+          "VmRSS": 297611264,
+          "VmHWM": 297611264
+        },
+        {
+          "name": "concurrent-homepage",
+          "requests": 24,
+          "concurrency": 4,
+          "elapsedMs": 144.09298500000295,
+          "VmRSS": 298790912,
+          "VmHWM": 298790912
+        },
+        {
+          "name": "concurrent-profile",
+          "requests": 8,
+          "concurrency": 4,
+          "elapsedMs": 800.9274110000042,
+          "VmRSS": 329695232,
+          "VmHWM": 332750848
+        },
+        {
+          "name": "post-load-3s",
+          "VmRSS": 329695232,
+          "VmHWM": 332750848
+        }
+      ],
+      "sampledPeak": 332750848,
+      "termination": [
+        0,
+        null
+      ],
+      "smoke": "SSR, assets, same-origin no-key 400, SIGTERM passed"
+    },
+    {
+      "label": "optimized-node-adapter/bun",
+      "phases": [
+        {
+          "name": "idle",
+          "VmRSS": 48107520,
+          "VmHWM": 51167232
+        },
+        {
+          "name": "homepage",
+          "requests": 40,
+          "concurrency": 1,
+          "elapsedMs": 268.93510799999785,
+          "VmRSS": 85442560,
+          "VmHWM": 85573632
+        },
+        {
+          "name": "largest-profile",
+          "requests": 10,
+          "concurrency": 1,
+          "elapsedMs": 888.1113839999962,
+          "VmRSS": 162570240,
+          "VmHWM": 164372480
+        },
+        {
+          "name": "concurrent-homepage",
+          "requests": 24,
+          "concurrency": 4,
+          "elapsedMs": 74.24865899999713,
+          "VmRSS": 146522112,
+          "VmHWM": 164372480
+        },
+        {
+          "name": "concurrent-profile",
+          "requests": 8,
+          "concurrency": 4,
+          "elapsedMs": 544.5050390000033,
+          "VmRSS": 155607040,
+          "VmHWM": 173182976
+        },
+        {
+          "name": "post-load-3s",
+          "VmRSS": 92028928,
+          "VmHWM": 173182976
+        }
+      ],
+      "sampledPeak": 173051904,
+      "termination": [
+        0,
+        null
+      ],
+      "smoke": "SSR, assets, same-origin no-key 400, SIGTERM passed"
+    },
+    {
+      "label": "optimized-node-adapter/bun-smol",
+      "phases": [
+        {
+          "name": "idle",
+          "VmRSS": 47792128,
+          "VmHWM": 50462720
+        },
+        {
+          "name": "homepage",
+          "requests": 40,
+          "concurrency": 1,
+          "elapsedMs": 253.7404349999997,
+          "VmRSS": 84955136,
+          "VmHWM": 84971520
+        },
+        {
+          "name": "largest-profile",
+          "requests": 10,
+          "concurrency": 1,
+          "elapsedMs": 834.2042180000062,
+          "VmRSS": 158687232,
+          "VmHWM": 168906752
+        },
+        {
+          "name": "concurrent-homepage",
+          "requests": 24,
+          "concurrency": 4,
+          "elapsedMs": 69.59556199999497,
+          "VmRSS": 150937600,
+          "VmHWM": 168906752
+        },
+        {
+          "name": "concurrent-profile",
+          "requests": 8,
+          "concurrency": 4,
+          "elapsedMs": 546.4902020000009,
+          "VmRSS": 166424576,
+          "VmHWM": 168906752
+        },
+        {
+          "name": "post-load-3s",
+          "VmRSS": 87490560,
+          "VmHWM": 168906752
+        }
+      ],
+      "sampledPeak": 168390656,
+      "termination": [
+        0,
+        null
+      ],
+      "smoke": "SSR, assets, same-origin no-key 400, SIGTERM passed"
+    },
+    {
+      "label": "official-bun-adapter/bun",
+      "phases": [
+        {
+          "name": "idle",
+          "VmRSS": 42070016,
+          "VmHWM": 47710208
+        },
+        {
+          "name": "homepage",
+          "requests": 40,
+          "concurrency": 1,
+          "elapsedMs": 217.91395999999804,
+          "VmRSS": 82685952,
+          "VmHWM": 82685952
+        },
+        {
+          "name": "largest-profile",
+          "requests": 10,
+          "concurrency": 1,
+          "elapsedMs": 762.7711799999961,
+          "VmRSS": 147177472,
+          "VmHWM": 147877888
+        },
+        {
+          "name": "concurrent-homepage",
+          "requests": 24,
+          "concurrency": 4,
+          "elapsedMs": 62.30578599999717,
+          "VmRSS": 137154560,
+          "VmHWM": 147877888
+        },
+        {
+          "name": "concurrent-profile",
+          "requests": 8,
+          "concurrency": 4,
+          "elapsedMs": 494.56592900000396,
+          "VmRSS": 158466048,
+          "VmHWM": 161566720
+        },
+        {
+          "name": "post-load-3s",
+          "VmRSS": 87306240,
+          "VmHWM": 161566720
+        }
+      ],
+      "sampledPeak": 161435648,
+      "termination": [
+        0,
+        null
+      ],
+      "smoke": "SSR, assets, same-origin no-key 400, SIGTERM passed"
+    },
+    {
+      "label": "official-bun-adapter/bun-smol",
+      "phases": [
+        {
+          "name": "idle",
+          "VmRSS": 43618304,
+          "VmHWM": 49020928
+        },
+        {
+          "name": "homepage",
+          "requests": 40,
+          "concurrency": 1,
+          "elapsedMs": 266.7357889999985,
+          "VmRSS": 80084992,
+          "VmHWM": 80453632
+        },
+        {
+          "name": "largest-profile",
+          "requests": 10,
+          "concurrency": 1,
+          "elapsedMs": 879.2959459999984,
+          "VmRSS": 140787712,
+          "VmHWM": 156315648
+        },
+        {
+          "name": "concurrent-homepage",
+          "requests": 24,
+          "concurrency": 4,
+          "elapsedMs": 72.38655700000527,
+          "VmRSS": 139038720,
+          "VmHWM": 156315648
+        },
+        {
+          "name": "concurrent-profile",
+          "requests": 8,
+          "concurrency": 4,
+          "elapsedMs": 642.9060620000018,
+          "VmRSS": 151072768,
+          "VmHWM": 163627008
+        },
+        {
+          "name": "post-load-3s",
+          "VmRSS": 88104960,
+          "VmHWM": 163627008
+        }
+      ],
+      "sampledPeak": 163627008,
+      "termination": [
+        0,
+        null
+      ],
+      "smoke": "SSR, assets, same-origin no-key 400, SIGTERM passed"
+    }
+  ]
+}

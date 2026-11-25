@@ -114,10 +114,6 @@ Tests use synthetic fixtures in temporary directories. They never replace your i
 
 ## Production deployment
 
-Initial rollout (2026-11-25) is blocked on GHCR pull permissions; publishing
-succeeded, but the application is not live yet. Make the `riftregulars` package
-public or provision a durable pull credential before enabling the Argo app.
-
 The Dockerfile builds with Bun 1.4.5 and runs only the official adapter output as
 UID/GID 1000 on port 3000, without the localhost preview preload. Its allowlisted
 build context excludes `.env`, imported data and private checkpoints. GitHub

@@ -26,7 +26,7 @@
   import SummonerPortrait from '#lib/components/SummonerPortrait.svelte';
   import PlayerDetails from '#lib/components/PlayerDetails.svelte';
   import PlayerSearch from '#lib/components/PlayerSearch.svelte';
-  import { countQueues, filterPlayers, formatDate, queueGroup, resultSummary, stats } from '#lib/encounters.ts';
+  import { filterPlayers, formatDate, queueGroup, resultSummary, stats } from '#lib/encounters.ts';
   import { premadeIds } from '#lib/queue-partners.ts';
   import { queueLabel, recentChampions, rosterPage, rosterPageIndex, shouldExpandRow, sortPlayers, type PlayerSort, type SortDirection } from '#lib/scouting.ts';
   import type { Encounter, SavedData } from '#lib/types.ts';
@@ -80,8 +80,13 @@
   const scanTotal = $derived(summary?.coverage.listed ?? 0);
   const scanProcessed = $derived((history?.matches.length ?? 0) + (history?.excluded?.length ?? 0));
   const storageKey = $derived(premadeStorageKey(history?.account.puuid ?? data.profile?.account.puuid ?? ''));
-  const queues = $derived([...countQueues(summary?.players.flatMap(p => p.encounters) ?? []).keys()]
-    .sort((a, b) => queueName(b).localeCompare(queueName(a))));
+  const queues = $derived.by(() => {
+    const ids = new Set<string>();
+    for (const player of summary?.players ?? []) {
+      for (const event of player.encounters) ids.add(queueGroup(event.queue));
+    }
+    return [...ids].sort((a, b) => queueName(b).localeCompare(queueName(a)));
+  });
   const players = $derived(sortPlayers(
     filterPlayers(summary?.players ?? [], search, queue, includePremade, premades,
       lastSeen === 'all' ? 0 : Date.now() - Number(lastSeen) * 86_400_000),

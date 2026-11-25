@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFile } from 'node:fs/promises';
+import { ScriptTarget, transpile } from 'typescript';
 import { countQueues, filterPlayers, queueGroup, resultSummary, stats, summarize } from '../src/lib/encounters.ts';
-import { queueLabel, recentChampions } from '../src/lib/scouting.ts';
-import { sortMatches } from '../src/lib/match-history.ts';
+import { queueLabel, recentChampions, rosterPage, sortPlayers, type PlayerSort } from '../src/lib/scouting.ts';
+import { sortMatches, type MatchSort } from '../src/lib/match-history.ts';
 import { compactMatch, historySummary, type History } from '../src/lib/history.ts';
 import { parseHistory } from '../src/lib/browser-cache.ts';
 import { account, coverage, match, year } from './fixtures.ts';
@@ -61,4 +63,67 @@ test('compact saved histories and summaries preserve original queue IDs and meta
   countQueues(summary.players[0].encounters);
   filterPlayers(summary.players, '', '1750');
   assert.equal(JSON.stringify(restored), saved);
+});
+
+test('all-queue filtering reuses encounters while queue filtering and downstream sorting leave input untouched', () => {
+  const player = summarize(account, [
+    match(1, true, 1740), match(2, false, 1750), match(3), match(4)
+  ], year, labels, coverage).players[0];
+  const players = [{ ...player, id: 'other', name: 'Zed', encounters: player.encounters.slice(1) }, player];
+  const before = structuredClone(players);
+  for (const p of players) {
+    p.encounters.forEach(Object.freeze);
+    Object.freeze(p.encounters);
+    Object.freeze(p);
+  }
+  Object.freeze(players);
+  const all = filterPlayers(players, '', 'all');
+  assert.deepEqual(all, [before[1], before[0]]);
+  assert.notEqual(all, players);
+  for (const p of all) {
+    assert.equal(p.encounters, players.find(source => source.id === p.id)!.encounters);
+    for (const column of ['champion', 'myChampion', 'result', 'queue', 'at', 'match'] satisfies MatchSort[]) {
+      for (const direction of ['asc', 'desc'] as const) {
+        assert.notEqual(sortMatches(p.encounters, column, direction, labels), p.encounters);
+      }
+    }
+    countQueues(p.encounters);
+    recentChampions(p.encounters);
+  }
+  for (const column of ['name', 'encounters', 'playedWith', 'playedAgainst', 'lastOn', 'lastSeen'] satisfies PlayerSort[]) {
+    for (const direction of ['asc', 'desc'] as const) rosterPage(sortPlayers(all, column, direction), 0);
+  }
+  const arena = filterPlayers(players, '', '1750');
+  assert.deepEqual(filterPlayers(players, '', '1740'), arena);
+  for (const p of arena) {
+    const original = players.find(source => source.id === p.id)!;
+    assert.notEqual(p.encounters, original.encounters);
+    assert.deepEqual(p.encounters, original.encounters.filter(e => queueGroup(e.queue) === '1750'));
+    p.encounters.reverse();
+  }
+  assert.deepEqual(filterPlayers([], '', 'all'), []);
+  assert.deepEqual(filterPlayers([], '', '1750'), []);
+  assert.deepEqual(players, before);
+});
+
+test('player queue options collect grouped keys directly with unchanged ordering and no flattened encounters', async () => {
+  const source = await readFile('src/routes/player/[riotId]/+page.svelte', 'utf8');
+  const body = source.match(/const queues = \$derived\.by\(\(\) => \{([\s\S]*?)\n  \}\);/)?.[1];
+  assert.ok(body);
+  assert.doesNotMatch(body, /flatMap|countQueues/);
+  const collect = new Function('summary', 'queueGroup', 'queueName', transpile(body, { target: ScriptTarget.ESNext }));
+  const queueName = (id: string) => queueLabel(id, labels);
+  const players = summarize(account, [
+    match(1, true, 1740), match(2, false, 1750), match(3), match(4, true, 450)
+  ], year, labels, coverage).players;
+  players.push({ ...players[0], id: 'other', encounters: players[0].encounters.slice(0, 2) });
+  const before = structuredClone(players);
+  const expected = [...countQueues(players.flatMap(p => p.encounters)).keys()]
+    .sort((a, b) => queueName(b).localeCompare(queueName(a)));
+  assert.deepEqual(collect({ players }, queueGroup, queueName), expected);
+  assert.deepEqual(expected, ['420', '450', '1750']);
+  for (const summary of [undefined, null, { players: [] }, { players: [{ encounters: [] }] }]) {
+    assert.deepEqual(collect(summary, queueGroup, queueName), []);
+  }
+  assert.deepEqual(players, before);
 });

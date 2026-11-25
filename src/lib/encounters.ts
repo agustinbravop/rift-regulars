@@ -105,7 +105,7 @@ export function filterPlayers(
   const query = search.trim().toLocaleLowerCase();
   const marked = new Set(premades);
   return players.map(p => ({
-    ...p, encounters: p.encounters.filter(e => queue === 'all' || queueGroup(e.queue) === queueGroup(queue))
+    ...p, encounters: queue === 'all' ? p.encounters : p.encounters.filter(e => queueGroup(e.queue) === queueGroup(queue))
   })).filter(p => {
     const riotId = `${p.name}${p.tagLine ? `#${p.tagLine}` : ''}`.toLocaleLowerCase();
     return p.encounters.length >= 2 && p.encounters[0].at >= seenSince && riotId.includes(query) &&

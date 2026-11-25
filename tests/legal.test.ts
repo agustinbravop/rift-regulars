@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { glob, readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { prerender } from '../src/routes/(legal)/+layout.ts';
 
 const source = (path: string) => readFile(new URL(`../src/${path}`, import.meta.url), 'utf8');
 
@@ -25,4 +26,15 @@ test('legal pages have titles, headings, and a real contact address', async () =
     assert.match(page, /mailto:agustinbravop1@gmail.com/);
     assert.doesNotMatch(page, /TODO|placeholder|support@your/);
   }
+});
+
+test('prerendering is enabled only for the legal route group and SSR remains enabled', async () => {
+  assert.equal(prerender, true);
+  const configured = [];
+  for await (const path of glob('src/routes/**/+*.{ts,js}')) {
+    const content = await readFile(path, 'utf8');
+    if (/export const prerender\s*=/.test(content)) configured.push(path);
+    assert.doesNotMatch(content, /export const ssr\s*=\s*false/);
+  }
+  assert.deepEqual(configured, ['src/routes/(legal)/+layout.ts']);
 });

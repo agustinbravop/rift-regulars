@@ -2,10 +2,12 @@
 
 | Plan | Status | Dependencies |
 |---|---|---|
-| [001: Bun and memory](001-bun-memory.md) | DONE — reviewed; awaiting user merge decision | None |
-| [002: Arrays and prerendering](002-arrays-prerender.md) | DONE — reviewed; awaiting user merge decision | 001 |
+| [001: Bun and memory](001-bun-memory.md) | DONE — reviewed and integrated into main | None |
+| [002: Arrays and prerendering](002-arrays-prerender.md) | DONE — reviewed and integrated into main | 001 |
 
-Implementation runs in an isolated worktree; merging is the user's decision.
+The user authorized integration and deployment on 2026-11-25. Main-tree user
+changes, including the coverage-paragraph removal and these plans, were committed
+before integrating both optimization commits.
 
 Commit: `189301e1fbb345b9e81461a0d9a44a7888f0e295`.
 Reviewer reran check (0 errors/warnings), tests (112 passing), and production build.

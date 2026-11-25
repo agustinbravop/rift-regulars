@@ -65,11 +65,20 @@
   let history = $state<History | null>(null);
   const scanPlayerIcon = $derived(history ? accountIcon(history.matches, history.account.puuid) : data.profile?.icon);
   let platform = $state<Platform>(untrack(() => data.profile?.platform ?? 'LA2'));
-  let progress = $state('');
+  let scanMessageIndex = $state(0);
+  const scanMessages = ['Scanning match history…', 'Reading match details…', 'Looking for recurring players…', 'Putting your history together…', 'Finding your Rift regulars…'];
+  $effect(() => {
+    if (!busy || !scanning) return;
+    scanMessageIndex = 0;
+    const timer = setInterval(() => { scanMessageIndex = (scanMessageIndex + 1) % scanMessages.length; }, 5000);
+    return () => clearInterval(timer);
+  });
   let cacheError = $state('');
   let stopped = false;
   let scanning = $state(untrack(() => !data.featured));
   let checkingCache = $state(untrack(() => !data.featured));
+  const scanTotal = $derived(summary?.coverage.listed ?? 0);
+  const scanProcessed = $derived((history?.matches.length ?? 0) + (history?.excluded?.length ?? 0));
   const storageKey = $derived(premadeStorageKey(history?.account.puuid ?? data.profile?.account.puuid ?? ''));
   const queues = $derived([...countQueues(summary?.players.flatMap(p => p.encounters) ?? []).keys()]
     .sort((a, b) => queueName(b).localeCompare(queueName(a))));
@@ -167,7 +176,6 @@
         await showHistory();
         return;
       }
-      progress = 'Looking up player…';
       if (!account) {
         const discovered = parseDiscovery(await api({ action: 'discover', riotId }));
         account = discovered.account;
@@ -201,7 +209,6 @@
     } finally {
       checkingCache = false;
       busy = false;
-      progress = '';
     }
   }
 
@@ -235,10 +242,9 @@
           }
         } catch { /* Queue IDs remain usable if public labels are unavailable. */ }
       }
-      await importHistory(value, api, async (current, message) => {
+      await importHistory(value, api, async current => {
         if (stopped) throw new Error('Scan stopped. Refresh to resume.');
         displayHistory(current);
-        progress = message;
         if (refreshKnownIds && current.listed) {
           const count = countNewMatches(current.ids, refreshKnownIds);
           refreshMessage = `Found ${count} new ${count === 1 ? 'match' : 'matches'}`;
@@ -320,7 +326,6 @@
     } finally {
       refreshKnownIds = null;
       busy = false;
-      progress = '';
     }
   }
 </script>
@@ -363,16 +368,32 @@
 <main id="main-content" class:scan-page={scanning && !checkingCache} tabindex="-1">
   {#if scanning && !checkingCache}
     <section class="scan-screen" aria-labelledby="scan-title" aria-busy={busy}>
-      {#if busy}<RefreshCw class="scan-icon refreshing" aria-hidden="true" />{/if}
-      <h1 id="scan-title">{refreshError ? 'Scan paused' : 'Scanning match history'}</h1>
+      {#if busy && !scanTotal}<RefreshCw class="scan-icon refreshing" aria-hidden="true" />{/if}
+      <h1 id="scan-title" class="sr-only">{refreshError ? 'Scan paused' : 'Scanning match history'}</h1>
       <div class="scan-player">
-        <SummonerPortrait icon={scanPlayerIcon} name={summary?.account ?? page.params.riotId ?? ''} />
-         <p>{currentAccount.gameName}<span class="player-tag">#{currentAccount.tagLine}</span> <span class="text-muted-foreground">· {regions[platform].label}</span></p>
+         <SummonerPortrait icon={scanPlayerIcon} name={summary?.account ?? page.params.riotId ?? ''} />
+         <div class="scan-player-identity">
+           <p>{currentAccount.gameName}<span class="player-tag">#{currentAccount.tagLine}</span></p>
+         </div>
       </div>
-      <p class="scan-status" role="status">{refreshError || progress || 'Opening saved history…'}</p>
-      {#if summary && summary.coverage.listed}
-        <progress class="scan-progress" max={summary.coverage.listed} value={(history?.matches.length ?? 0) + (history?.excluded?.length ?? 0)} aria-label="Matches processed"></progress>
-        <p class="text-muted-foreground">{(history?.matches.length ?? 0) + (history?.excluded?.length ?? 0)} / {summary.coverage.listed} matches processed</p>
+      <div class="scan-meter">
+        <p class="scan-status" role="status">{refreshError || scanMessages[scanMessageIndex]}</p>
+        {#if scanTotal}
+          <progress class="sr-only" max={scanTotal} value={scanProcessed} aria-label="Matches processed"></progress>
+          <div class="scan-progress" aria-hidden="true">
+            <div class="scan-progress-fill" class:scan-active={busy && !refreshError && scanProcessed < scanTotal}
+              style:transform="scaleX({Math.min(1, scanProcessed / scanTotal)})"></div>
+          </div>
+          <div class="scan-counts">
+            <span>{scanProcessed} of {scanTotal} matches</span>
+            <span>{Math.round(scanProcessed / scanTotal * 100)}%</span>
+          </div>
+        {/if}
+      </div>
+      {#if busy}
+        <p class="scan-help">
+          The first scan can take a moment.
+        </p>
       {/if}
       {#if cacheError}<p class="lookup-error" role="alert">{cacheError}</p>{/if}
       {#if !busy && refreshError}

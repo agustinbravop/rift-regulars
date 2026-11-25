@@ -32,6 +32,7 @@
   --destructive: oklch(78% .115 8);
   --warning: oklch(83% .16 80);
   --success: oklch(82% .105 170);
+  --scan-fill: oklch(77% .17 155);
   --ally: oklch(79% .105 250);
   --match-against: oklch(79% .10 25);
   --opponent: oklch(80% .10 305);
@@ -127,12 +128,26 @@ main { max-width: 1560px; margin: auto; padding: 32px; }
 .landing .lookup-submit { grid-column: 2; grid-row: 1; min-height: 52px; padding-inline: 26px; font-size: 1rem; white-space: nowrap; }
 .lookup-error { color: var(--destructive); margin-top: 12px; }
 .scan-page { max-width: 760px; padding-top: clamp(64px, 14vh, 160px); }
-.scan-screen { display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+.scan-screen { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
 .scan-screen h1 { margin: 0; }
 .scan-icon { width: 40px; height: 40px; color: var(--primary); }
-.scan-player { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 1.2rem; overflow-wrap: anywhere; }
-.scan-status { color: var(--muted-foreground); min-height: 1.5em; }
-.scan-progress { width: min(100%, 400px); height: 8px; accent-color: var(--primary); }
+.scan-player { display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 1.2rem; overflow-wrap: anywhere; }
+.scan-player .summoner-portrait[data-slot="avatar"] { width: 83px; height: 83px; }
+.scan-player-identity { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+.scan-player-identity p { margin: 0; min-width: 0; font-size: 1.35rem; }
+.scan-meter { width: min(100%, 400px); margin-top: 20px; text-align: left; }
+.scan-status { color: var(--muted-foreground); min-height: 1.5em; margin: 0 0 12px; overflow-wrap: anywhere; }
+.scan-progress { width: 100%; height: 10px; border-radius: 999px; overflow: hidden; background: var(--muted); }
+.scan-progress-fill { position: relative; height: 100%; border-radius: inherit; overflow: hidden; background: var(--scan-fill); transform-origin: left; transition: transform 150ms cubic-bezier(.22, 1, .36, 1); }
+.scan-progress-fill.scan-active::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 35%, oklch(97% .015 155 / .16) 50%, transparent 65%); animation: scan-sweep 3.5s linear infinite; }
+@keyframes scan-sweep { from { transform: translateX(-100%); } 70%, to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .scan-progress-fill { transition: none; }
+  .scan-progress-fill.scan-active::after { animation: none; content: none; }
+}
+.scan-counts { display: flex; justify-content: space-between; gap: 16px; margin-top: 10px; font-size: .88rem; color: var(--muted-foreground); }
+.scan-counts span:last-child { color: var(--foreground); }
+.scan-help { margin: 8px 0 0; font-size: .88rem; color: var(--muted-foreground); line-height: 1.7; }
 .scan-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 .refresh-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; }
 .refresh-info { color: var(--muted-foreground); font-size: .88rem; }

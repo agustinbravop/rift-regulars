@@ -25,14 +25,14 @@ export async function importHistory(
     }
     history.ids = [...ids];
     history.updated = new Date().toISOString();
-    await publish(history, `Found ${ids.size} matches…`);
+    await publish(history, `Finding matches… ${ids.size} found`);
     if (page.length < 100) break;
   }
   history.listed = true;
   const saved = new Set(history.matches.map(m => m.metadata.matchId));
   const excluded = new Set(history.excluded ?? []);
   const missing = history.ids.filter(id => !saved.has(id));
-  await publish(history, 'Scanning match details…');
+  await publish(history, 'Reading match details');
   for (const [index, id] of missing.entries()) {
     const match = parseMatch(await api<Match>({ action: 'match', id }), id);
     const at = (match.info.gameStartTimestamp ?? match.info.gameCreation ?? 0) / 1000;
@@ -48,7 +48,7 @@ export async function importHistory(
     }
     history.excluded = [...excluded];
     history.updated = new Date().toISOString();
-    if ((index + 1) % 10 === 0) await publish(history, 'Scanning match details…');
+    if ((index + 1) % 10 === 0) await publish(history, 'Reading match details');
   }
   await publish(history, `Up to date: ${history.matches.length} matches.`);
 }

@@ -56,6 +56,31 @@ test('cache loading shares real table headers and preserves all seven columns wi
   assert.match(player, /class="roster-pagination">\s*\{#if checkingCache\}[\s\S]*<Skeleton/);
 });
 
+test('scan groups labeled progress with counts and hides the spinner once totals are known', async () => {
+  const player = await readFile(new URL('../src/routes/player/[riotId]/+page.svelte', import.meta.url), 'utf8');
+  const scan = player.slice(player.indexOf('<section class="scan-screen"'), player.indexOf('<section class="workspace-intro">'));
+  assert.ok(scan.includes('{#if busy && !scanTotal}'));
+  assert.match(scan, /class="scan-meter"[\s\S]*role="status"[\s\S]*<progress[^>]*aria-label="Matches processed"[\s\S]*class="scan-counts"/);
+  assert.ok(scan.includes('{scanProcessed} of {scanTotal} matches'));
+  assert.ok(!scan.includes('Your progress is saved in this browser.'));
+  assert.ok(!scan.includes('Back to search'));
+  assert.match(scan, /<SummonerPortrait[\s\S]*class="scan-player-identity"/);
+  assert.ok(!scan.includes('<Badge'));
+  assert.ok(scan.includes('id="scan-title" class="sr-only"'));
+  assert.ok(player.includes('if (!busy || !scanning) return;'));
+  assert.ok(player.includes('return () => clearInterval(timer)'));
+  assert.ok(!player.includes('scanPreview'));
+  assert.ok(!player.toLowerCase().includes('austin#arg'));
+  assert.ok(player.includes('const scanTotal = $derived(summary?.coverage.listed ?? 0)'));
+  assert.ok(scan.includes('{refreshError || scanMessages[scanMessageIndex]}'));
+  assert.ok(scan.includes('Retry scan'));
+  assert.ok(scan.includes('View partial history'));
+  assert.ok(scan.includes('class:scan-active={busy && !refreshError && scanProcessed < scanTotal}'));
+  const css = await readFile(new URL('../src/routes/layout.css', import.meta.url), 'utf8');
+  assert.match(css, /\.scan-progress-fill \{[^}]*transition: transform 150ms/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.scan-progress-fill \{ transition: none; \}\s*\.scan-progress-fill\.scan-active::after \{ animation: none; content: none; \}/);
+});
+
 test('player URLs put the complete Riot ID in one encoded path segment', () => {
   assert.equal(playerUrl('Agus Brr#ARG'), '/player/Agus%20Brr%23ARG');
   const url = new URL(playerUrl('Player / ?#EUW'), 'https://example.com');

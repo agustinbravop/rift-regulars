@@ -37,7 +37,7 @@ export async function importHistory(
     const match = parseMatch(await api<Match>({ action: 'match', id }), id);
     const at = (match.info.gameStartTimestamp ?? match.info.gameCreation ?? 0) / 1000;
     // Riot can list empty records with zero timestamps despite the requested year bounds.
-    if (match.info.participants.length === 0 ||
+    if (match.info.queueId === 0 || match.info.participants.length === 0 ||
       at < yearStart(history.year) || at >= yearStart(history.year + 1)) {
       excluded.add(id);
     } else if (!match.info.participants.some(p => p.puuid === history.account.puuid)) {

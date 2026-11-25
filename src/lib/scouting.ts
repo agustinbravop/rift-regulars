@@ -1,5 +1,5 @@
 import type { Player } from './types.ts';
-import { resultSummary, stats } from './encounters.ts';
+import { queueGroup, resultSummary, stats } from './encounters.ts';
 import { championLabel } from './champions.ts';
 
 export const ROSTER_PAGE_SIZE = 50;
@@ -52,7 +52,8 @@ export function queueLabel(id: string, queues: Record<string, string>) {
   const labels: Record<string, string> = {
     '420': 'Ranked Solo/Duo', '440': 'Ranked Flex', '710': 'Ranked 5s', '1750': 'Arena'
   };
-  return labels[id] ?? queues[id] ?? `Queue ${id}`;
+  const group = queueGroup(id);
+  return labels[group] ?? queues[group] ?? `Queue ${group}`;
 }
 
 export function rosterPage(players: Player[], requestedPage: number) {

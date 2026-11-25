@@ -15,6 +15,7 @@
   import { requestHistory } from '#lib/history-api.ts';
   import { playerUrl } from '#lib/player-url.ts';
   import { parseDiscovery } from '#lib/validation.ts';
+  import { featuredAccounts } from '#lib/featured.ts';
   import { filterRecentPlayers, parseRecentPlayers, recentPlayersKey, rememberPlayer, type RecentPlayer } from '#lib/recent-players.ts';
 
   let { compact = false }: { compact?: boolean } = $props();
@@ -111,6 +112,10 @@
       error = '';
       busy = true;
       recentOpen = false;
+      if (featuredAccounts.some(entry => entry.riotId?.toLowerCase() === `${gameName}#${tagLine}`.toLowerCase())) {
+        await goto(playerUrl(`${gameName}#${tagLine}`));
+        return;
+      }
       const { account, platform } = parseDiscovery(await requestHistory({
         action: 'discover', riotId: `${gameName}#${tagLine}`
       }));

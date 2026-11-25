@@ -11,6 +11,9 @@ import type { Player } from './types.ts';
 export function premadeIds(players: Player[], marked: readonly string[], unmarked: readonly string[]) {
   const excluded = new Set(unmarked);
   return [...new Set([...marked, ...players
-    .filter(p => p.encounters.length >= 5 && p.encounters.every(e => e.together))
+    .filter(p => {
+      const together = p.encounters.filter(e => e.together).length;
+      return together >= 5 && together * 100 > p.encounters.length * 95;
+    })
     .map(p => p.id)])].filter(id => !excluded.has(id));
 }

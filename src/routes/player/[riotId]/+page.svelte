@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -26,7 +26,7 @@
   import SummonerPortrait from '#lib/components/SummonerPortrait.svelte';
   import PlayerDetails from '#lib/components/PlayerDetails.svelte';
   import PlayerSearch from '#lib/components/PlayerSearch.svelte';
-  import { filterPlayers, formatDate, resultSummary, stats } from '#lib/encounters.ts';
+  import { countQueues, filterPlayers, formatDate, queueGroup, resultSummary, stats } from '#lib/encounters.ts';
   import { premadeIds } from '#lib/queue-partners.ts';
   import { queueLabel, recentChampions, rosterPage, rosterPageIndex, shouldExpandRow, sortPlayers, type PlayerSort, type SortDirection } from '#lib/scouting.ts';
   import type { Encounter, SavedData } from '#lib/types.ts';
@@ -63,15 +63,15 @@
   let storageError = $state('');
   let markNotice = $state('');
   let history = $state<History | null>(null);
-  const scanPlayerIcon = $derived(history ? accountIcon(history.matches, history.account.puuid) : undefined);
-  let platform = $state<Platform>('LA2');
+  const scanPlayerIcon = $derived(history ? accountIcon(history.matches, history.account.puuid) : data.profile?.icon);
+  let platform = $state<Platform>(untrack(() => data.profile?.platform ?? 'LA2'));
   let progress = $state('');
   let cacheError = $state('');
   let stopped = false;
-  let scanning = $state(true);
-  let checkingCache = $state(true);
-  const storageKey = $derived(premadeStorageKey(history?.account.puuid ?? ''));
-  const queues = $derived([...new Set(summary?.players.flatMap(p => p.encounters.map(e => e.queue)) ?? [])]
+  let scanning = $state(untrack(() => !data.featured));
+  let checkingCache = $state(untrack(() => !data.featured));
+  const storageKey = $derived(premadeStorageKey(history?.account.puuid ?? data.profile?.account.puuid ?? ''));
+  const queues = $derived([...countQueues(summary?.players.flatMap(p => p.encounters) ?? []).keys()]
     .sort((a, b) => queueName(b).localeCompare(queueName(a))));
   const players = $derived(sortPlayers(
     filterPlayers(summary?.players ?? [], search, queue, includePremade, premades,
@@ -99,8 +99,9 @@
 
   function loadPremades() {
     try {
-      if (!history) return;
-      const { marked, unmarked } = readPremades(localStorage, history.account);
+      const account = history?.account ?? data.profile?.account;
+      if (!account) return;
+      const { marked, unmarked } = readPremades(localStorage, account);
       markedPremades = marked;
       unmarkedPremades = unmarked;
     } catch (error) {
@@ -136,6 +137,12 @@
   }
 
   async function openPlayer() {
+    if (data.featured) {
+      loadPremades();
+      checkingCache = false;
+      scanning = false;
+      return;
+    }
     busy = true;
     try {
       const { gameName, tagLine } = parseRiotId(page.params.riotId);
@@ -199,7 +206,7 @@
   }
 
   async function scan() {
-    if (!history) return;
+    if (data.featured || !history) return;
     checkingCache = false;
     const key = `rift-regulars:import:${history.year}:${history.account.puuid}`;
     if (!navigator.locks) throw new Error('Scanning needs a secure browser context (HTTPS or localhost).');
@@ -305,7 +312,7 @@
     try {
       await scan();
       if (scanning) await showHistory();
-      if (queue !== 'all' && !summary?.players.some(p => p.encounters.some(e => e.queue === queue))) queue = 'all';
+      if (queue !== 'all' && !queues.includes(queueGroup(queue))) queue = 'all';
       resetPage();
     } catch (error) {
       refreshMessage = '';
@@ -348,7 +355,7 @@
     <div class="account-info" aria-label="Current account">
       <SummonerPortrait icon={scanPlayerIcon} name={summary?.account ?? page.params.riotId ?? ''} />
       <span>{currentAccount.gameName}<span class="player-tag">#{currentAccount.tagLine}</span></span>
-      <Badge variant="outline">{regions[platform].label}</Badge>
+      {#if !data.featured || data.profile}<Badge variant="outline">{regions[platform].label}</Badge>{/if}
     </div>
   </div>
 </header>
@@ -378,13 +385,13 @@
   {:else}
   <section class="workspace-intro">
     <h1 id="history-heading" tabindex="-1">Know the names you keep seeing on Summoner’s Rift.</h1>
-    <div class="refresh-actions">
+    {#if !data.featured}<div class="refresh-actions">
       <p class="refresh-info" role="status">{refreshMessage}</p>
       <Button variant="outline" onclick={reload} disabled={checkingCache || busy || !ready}>
         <span class="refresh-indicator" class:refreshing={busy && !checkingCache} aria-hidden="true"><RefreshCw data-icon="inline-start" /></span>
         {busy && !checkingCache ? 'Refreshing…' : 'Refresh'}
       </Button>
-    </div>
+    </div>{/if}
   </section>
   {#if summary && !busy && (!summary.coverage.complete || summary.coverage.error)}
     <Alert.Root class="mb-5">
@@ -392,10 +399,10 @@
       <Alert.Description>{summary.coverage.missing} of {summary.coverage.listed} listed matches still need downloading. {summary.coverage.error ?? 'Refresh to finish listing and downloading history.'}</Alert.Description>
     </Alert.Root>
   {/if}
-  {#if refreshError || storageError || cacheError}
+  {#if refreshError || storageError || cacheError || data.error}
     <Alert.Root variant="destructive" class="mb-5">
-      <Alert.Title>{refreshError ? 'Player history unavailable' : 'Browser storage unavailable'}</Alert.Title>
-      <Alert.Description>{refreshError || storageError || cacheError}</Alert.Description>
+      <Alert.Title>{refreshError || data.error ? 'Player history unavailable' : 'Browser storage unavailable'}</Alert.Title>
+      <Alert.Description>{refreshError || storageError || cacheError || data.error}</Alert.Description>
     </Alert.Root>
   {/if}
   <p class="sr-only" role="status">{markNotice}</p>
@@ -441,7 +448,7 @@
     {/if}
     {#if !summary && !checkingCache}
       <Empty.Root>
-        <Empty.Header><Empty.Title>{busy ? 'Finding your match history' : 'Choose a player to get started'}</Empty.Title><Empty.Description>{busy ? 'The first scan takes longer. Future refreshes reuse matches saved in this browser.' : 'Enter a player name and #TAG in the header search.'}</Empty.Description></Empty.Header>
+        <Empty.Header><Empty.Title>{data.featured ? 'Featured history unavailable' : busy ? 'Finding your match history' : 'Choose a player to get started'}</Empty.Title><Empty.Description>{data.featured ? 'Choose another featured player or search for your own account. Featured histories are updated by the site operator.' : busy ? 'The first scan takes longer. Future refreshes reuse matches saved in this browser.' : 'Enter a player name and #TAG in the header search.'}</Empty.Description></Empty.Header>
       </Empty.Root>
     {:else if !players.length && !checkingCache}
       <Empty.Root>
@@ -516,7 +523,7 @@
                     {#if expandedId === player.id}<ChevronDown aria-hidden="true" />{:else}<ChevronRight aria-hidden="true" />{/if}
                     <SummonerPortrait icon={player.encounters[0].profileIcon} name={player.name} />
                     <span class="player-name">{player.name}{#if player.tagLine}<span class="player-tag">#{player.tagLine}</span>{/if}</span>
-                    {#if premades.includes(player.id)}<Badge variant="secondary" class="premade-accent" title={markedPremades.includes(player.id) ? 'Marked manually' : 'Auto-marked: at least 5 games together and none against in imported history'}>Premade</Badge>{/if}
+                    {#if premades.includes(player.id)}<Badge variant="secondary" class="premade-accent" title={markedPremades.includes(player.id) ? 'Marked manually' : 'Auto-marked: at least 5 games together and more than 95% together across imported encounters'}>Premade</Badge>{/if}
                   </Button>
                 </Table.Cell>
                 <Table.Cell>
@@ -590,6 +597,10 @@
           <p>{summary.matches} indexed games, from {formatDate(summary.earliest)} to {formatDate(summary.latest)}.</p>
           <p class="coverage-scanned">Scanned on {new Date(summary.updated).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')}.</p>
         </div>
+        {#if data.featured}
+          <p>Shared snapshot. {summary.coverage.note}</p>
+          {#if data.profile?.excluded.length}<p>Excluded custom, empty or out-of-year records: {data.profile.excluded.join(', ')}</p>{/if}
+        {/if}
       </section>
     {/if}
   </section>

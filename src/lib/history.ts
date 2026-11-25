@@ -59,7 +59,7 @@ export function historySummary(history: History, error: string | null = null) {
   const summary = summarize(history.account, history.matches, history.year, history.queues, {
     complete: history.listed && missing === 0, listed: history.ids.length, missing,
     error, since: yearStart(history.year), until: history.until,
-    note: 'Retrievable current-year Match-V5 history plus matches cached in this browser. Riot may not return the full year. Custom/TFT games are not included.'
+    note: 'Retrievable current-year Match-V5 history plus matches cached in this browser. Riot may not return the full year. New imports exclude custom games (queue 0), TFT, empty and out-of-year records.'
   }, null);
   summary.updated = history.updated;
   return summary;

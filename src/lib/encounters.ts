@@ -3,6 +3,16 @@ import { championName } from './champions.ts';
 import { participantRole } from './roles.ts';
 
 export const yearStart = (year: number) => Date.UTC(year, 0, 1) / 1000;
+export const queueGroup = (id: string) => id === '1740' ? '1750' : id;
+
+export function countQueues(encounters: readonly Encounter[]) {
+  const counts = new Map<string, number>();
+  for (const event of encounters) {
+    const queue = queueGroup(event.queue);
+    counts.set(queue, (counts.get(queue) ?? 0) + 1);
+  }
+  return counts;
+}
 
 export function summarize(
   account: Account, matches: Match[], year: number,
@@ -95,7 +105,7 @@ export function filterPlayers(
   const query = search.trim().toLocaleLowerCase();
   const marked = new Set(premades);
   return players.map(p => ({
-    ...p, encounters: p.encounters.filter(e => queue === 'all' || e.queue === queue)
+    ...p, encounters: p.encounters.filter(e => queue === 'all' || queueGroup(e.queue) === queueGroup(queue))
   })).filter(p => {
     const riotId = `${p.name}${p.tagLine ? `#${p.tagLine}` : ''}`.toLocaleLowerCase();
     return p.encounters.length >= 2 && p.encounters[0].at >= seenSince && riotId.includes(query) &&

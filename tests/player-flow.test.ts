@@ -31,6 +31,19 @@ test('the full-height shell keeps the footer after content and cache loading ret
   assert.match(player, /class="roster-filters"[\s\S]*\{#if checkingCache\}\s*<p class="sr-only" role="status">Opening saved history/);
 });
 
+test('expanded details widen desktop gutters from the sidebar without reducing table width', async () => {
+  const css = await readFile(new URL('../src/routes/layout.css', import.meta.url), 'utf8');
+  const match = css.match(/\.expanded-details \{[^}]*grid-template-columns: minmax\((\d+)px, (\d+)px\) 1px minmax\(0, 1fr\); gap: (\d+)px;/);
+  assert.ok(match);
+  const [, min, max, gap] = match.map(Number);
+  assert.equal(gap, 24);
+  assert.equal(min, 204);
+  assert.equal(max, 254);
+  assert.equal(min + gap * 2, 220 + 16 * 2);
+  assert.equal(max + gap * 2, 270 + 16 * 2);
+  assert.match(css, /\.expanded-details \{ grid-template-columns: 1fr; gap: 28px;/);
+});
+
 test('cache loading shares real table headers and preserves all seven columns with skeleton rows', async () => {
   const player = await readFile(new URL('../src/routes/player/[riotId]/+page.svelte', import.meta.url), 'utf8');
   assert.equal((player.match(/<Table.Header>/g) ?? []).length, 1);

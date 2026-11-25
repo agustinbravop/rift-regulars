@@ -8,7 +8,7 @@
   import { Button } from '#lib/components/ui/button/index.js';
   import { Separator } from '#lib/components/ui/separator/index.js';
   import ChampionPortrait from '#lib/components/ChampionPortrait.svelte';
-  import { formatDate } from '#lib/encounters.ts';
+  import { countQueues, formatDate } from '#lib/encounters.ts';
   import { championLabel } from '#lib/champions.ts';
   import { roleLabels, type Role } from '#lib/roles.ts';
   import { championRowsThatFit, matchUrl, sortMatches, type MatchSort } from '#lib/match-history.ts';
@@ -42,9 +42,7 @@
     sortColumn = column;
   }
   const queueCounts = $derived.by(() => {
-    const counts = new Map<string, number>();
-    for (const event of player.encounters) counts.set(event.queue, (counts.get(event.queue) ?? 0) + 1);
-    return [...counts].sort((a, b) => b[1] - a[1] || queueLabel(a[0], queues).localeCompare(queueLabel(b[0], queues)));
+    return [...countQueues(player.encounters)].sort((a, b) => b[1] - a[1] || queueLabel(a[0], queues).localeCompare(queueLabel(b[0], queues)));
   });
   const champions = $derived.by(() => {
     const counts = new Map<string, number>();

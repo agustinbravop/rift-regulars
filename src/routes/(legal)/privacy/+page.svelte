@@ -15,7 +15,8 @@
 
 <h2>Storage on your device</h2>
 <p>Imported match history is saved in your browser's IndexedDB. Recent searches and manual premade marks are saved in localStorage. These records stay in that browser profile until you clear them or your browser removes them; they are not automatically synced to another device. Anyone with access to the same browser profile may be able to view them.</p>
-<p>The web application processes Riot responses on the server but does not save imported match history to server files or a server-side match database. Hosting infrastructure may process technical request information, such as IP addresses, request URLs, timestamps, and errors, to deliver and secure the site. A player URL can contain a Riot ID, so it may also appear in browser history and hosting access logs.</p>
+<p>Personal web imports process Riot responses on the server without saving that match history to server files. Separately, the operator imports selected featured accounts into compact, compressed server-side histories, including participant identifiers and gameplay information. The site publishes shared summaries of those accounts with recurring players and their shared-match details, account identifiers, profile icons, coverage and scan dates. These snapshots are available to all visitors, are updated by the operator, and are retained until replaced or removed. Opening them does not start a Riot import or save their match histories in your browser; manual premade marks remain local to your browser.</p>
+<p>Hosting infrastructure may process technical request information, such as IP addresses, request URLs, timestamps, and errors, to deliver and secure the site. A player URL can contain a Riot ID, so it may also appear in browser history and hosting access logs.</p>
 
 <h2>Cookies and analytics</h2>
 <p>The current application does not use advertising cookies or analytics trackers. It uses browser storage for the features described above. Fonts are hosted with the application.</p>
@@ -27,6 +28,7 @@
 <h2>Removing data and exercising your rights</h2>
 <p>To remove all locally saved Rift Regulars data, use your browser's site settings to clear this site's data, including IndexedDB and localStorage. This removes cached matches, recent searches, and manual marks. Removing an entry from the recent-search list alone does not delete its match history. Browser history is managed separately by your browser.</p>
 <p>Clearing site data does not remove the underlying records held by Riot Games. Searching again can retrieve available records again.</p>
+<p>Clearing your browser does not delete shared featured snapshots or their server-side import histories. Contact the operator at the email below to request access, correction or removal of information in those records.</p>
 <p>Depending on your location, you may have rights to access, correct, delete, or restrict processing of your personal data, object to its use, request portability, or complain to your local data protection authority. Contact <a href="mailto:agustinbravop1@gmail.com">agustinbravop1@gmail.com</a> to make a request about data handled by Rift Regulars. Do not send your Riot password or API credentials. We cannot remotely erase data stored only in your browser.</p>
 
 <h2>Changes to this policy</h2>

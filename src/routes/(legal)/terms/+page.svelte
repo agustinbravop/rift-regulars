@@ -11,7 +11,7 @@
 <p>The current service is free and does not require a user account or subscription. Questions can be sent to <a href="mailto:agustinbravop1@gmail.com">agustinbravop1@gmail.com</a>.</p>
 
 <h2>What the service provides</h2>
-<p>Rift Regulars uses available Riot Games data to show players encountered in previous matches and summarize those encounters. Results depend on the matches retrieved and saved in your browser. A completed scan does not guarantee that every match from the calendar year is available.</p>
+<p>Rift Regulars uses available Riot Games data to show players encountered in previous matches and summarize those encounters. Personal results depend on matches retrieved and saved in your browser. Featured accounts use shared, operator-imported server snapshots, which may be unavailable or older than personal live imports. Visitors cannot refresh those shared snapshots. A completed scan does not guarantee that every match from the calendar year is available. New imports exclude custom games, empty and out-of-year records.</p>
 <p>Statistics may be incomplete, outdated, or incorrect. Premade labels can be manual marks or estimates based on shared matches; they are not confirmation of party membership from Riot Games. The service does not determine a player's skill, character, or conduct.</p>
 
 <h2>Acceptable use</h2>
@@ -22,7 +22,7 @@
 <p>Rift Regulars is not an official Riot Games product. Riot Games owns its game assets, trademarks, and other intellectual property. Your use of League of Legends remains subject to <a href="https://www.riotgames.com/en/terms-of-service">Riot Games' terms</a>. These terms do not grant you ownership of Riot Games assets or other third-party material.</p>
 
 <h2>Privacy and saved history</h2>
-<p>Our <a href="/privacy">Privacy Policy</a> explains the data processed by the service and stored in your browser. Browser storage can be cleared or evicted, and saved history is not backed up by Rift Regulars. You can stop using the service at any time and remove its site data through your browser settings.</p>
+<p>Our <a href="/privacy">Privacy Policy</a> explains the data processed by the service, browser storage, and the separately stored featured-account histories and public summaries. Browser storage can be cleared or evicted, and personal browser history is not backed up by Rift Regulars. You can stop using the service at any time and remove its site data through your browser settings. This does not remove shared featured histories; contact the operator about those records.</p>
 
 <h2>Availability and responsibility</h2>
 <p>The service is provided as available, without a guarantee of uninterrupted access, complete history, or error-free results. Riot API availability, rate limits, and changes can affect it. Features may change or be discontinued.</p>

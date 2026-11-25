@@ -26,17 +26,34 @@ test('include premade toggle uses the supplied marks', () => {
   assert.equal(filterPlayers(players, '', 'all', false, ['unknown-id']).length, 2);
 });
 
-test('automatically marks five or more teammate-only games and respects manual overrides', () => {
-  const player = summarize(account, [1, 2, 3, 4, 5].map(id => match(id)), year, {}, coverage).players[0];
-  assert.deepEqual(premadeIds([player], [], []), [player.id]);
-  assert.deepEqual(premadeIds([{ ...player, encounters: player.encounters.slice(0, 4) }], [], []), []);
-  const six = summarize(account, [1, 2, 3, 4, 5, 6].map(id => match(id)), year, {}, coverage).players[0];
-  assert.deepEqual(premadeIds([six], [], []), [six.id]);
-  const mixed = summarize(account, [...[1, 2, 3, 4, 5].map(id => match(id)), match(6, false, 450)], year, {}, coverage).players[0];
-  assert.deepEqual(premadeIds([mixed], [], []), []);
-  assert.deepEqual(premadeIds([mixed], [mixed.id], []), [mixed.id]);
-  assert.deepEqual(premadeIds([player], [player.id], [player.id]), []);
-  assert.deepEqual(premadeIds([player], [player.id], []), [player.id]);
+test('automatic premades require at least five together and strictly more than 95% together', () => {
+  const base = summarize(account, [match(1), match(2)], year, {}, coverage).players[0];
+  for (const [together, against, qualifies] of [
+    [0, 0, false], [4, 0, false], [5, 0, true], [6, 0, true],
+    [19, 1, false], [20, 1, true], [18, 1, false], [5, 1, false]
+  ] as const) {
+    const player = { ...base, encounters: Array.from({ length: together + against }, (_, index) => ({
+      ...base.encounters[0], match: `LA2_${index + 1}`, together: index < together,
+      queue: index < together ? '420' : '450', remake: index >= together
+    })) };
+    assert.deepEqual(premadeIds([player], [], []), qualifies ? [player.id] : [],
+      `${together} together / ${against} against, including opponent remakes in another queue`);
+  }
+});
+
+test('manual overrides retain precedence, identity order and deduplication for mixed histories', () => {
+  const games = Array.from({ length: 20 }, (_, index) => match(index + 1));
+  const automatic = {
+    ...summarize(account, [...games, match(21, false, 450)], year, {}, coverage).players[0],
+    id: 'automatic'
+  };
+  const mixed = { ...automatic, id: 'manual-only', encounters: automatic.encounters.slice(0, 6)
+    .map((encounter, index) => ({ ...encounter, together: index < 5 })) };
+  assert.deepEqual(premadeIds([automatic, mixed], [], []), ['automatic']);
+  assert.deepEqual(premadeIds([automatic, mixed], ['manual-only', 'manual-only', 'unknown'], []),
+    ['manual-only', 'unknown', 'automatic']);
+  assert.deepEqual(premadeIds([automatic, mixed], ['manual-only'], ['automatic']), ['manual-only']);
+  assert.deepEqual(premadeIds([automatic, mixed], ['automatic', 'manual-only'], ['automatic', 'manual-only']), []);
 });
 
 test('marks hide the entire player including opponent games and combine with other filters', () => {

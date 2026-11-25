@@ -1,5 +1,8 @@
 <script lang="ts">
   import PlayerSearch from '#lib/components/PlayerSearch.svelte';
+  import FeaturedCarousel from '#lib/components/FeaturedCarousel.svelte';
+  import type { PageProps } from './$types';
+  let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -25,4 +28,5 @@
     <p class="hero-description">Find the teammates and opponents you meet most often in this year’s matches.</p>
     <PlayerSearch />
   </section>
+  <FeaturedCarousel accounts={data.featured} />
 </main>

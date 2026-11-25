@@ -21,7 +21,7 @@ import, or start/stop a server without permission.
 
 ## Why
 
-The user wants approximately ten curated streamer accounts on the landing page,
+The user wants nine curated streamer accounts on the landing page,
 opening shared preloaded histories without each visitor scanning Riot again.
 Keep only fields the product consumes. Existing Agus Brr data measured 51.73 MB
 raw, 584 KB for a complete compact history gzipped, and 86 KB for its derived
@@ -212,5 +212,5 @@ Changing what the UI consumes requires updating compaction, validation and tests
 together. Old snapshots cannot reconstruct discarded fields; expanding features
 may require reimporting while Riot still retains the matches. Historical names,
 Arena squads, unknown outcomes and remake semantics must not be simplified away.
-At ten accounts, per-account compressed snapshots are deliberate; reconsider
+At nine accounts, per-account compressed snapshots are deliberate; reconsider
 shared-match deduplication only when overlap/scale justifies it.

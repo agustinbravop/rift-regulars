@@ -7,6 +7,15 @@ import { Riot, RiotError } from '../src/lib/server/riot.ts';
 import { account } from './fixtures.ts';
 import { parseDiscovery } from '../src/lib/validation.ts';
 
+test('gateway text errors show actionable retry guidance without exposing a JSON parser error', async () => {
+  for (const status of [429, 502, 503]) {
+    await assert.rejects(requestHistory({ action: 'discover', riotId: 'Synthetic#TEST' },
+      async () => new Response('Too Many Requests', { status })),
+    error => error instanceof HistoryApiError && error.status === status &&
+      (status === 429 ? /busy.*wait.*try again/i : /temporarily unavailable.*try again later/i).test(error.message));
+  }
+});
+
 test('search feedback uses one persistent toaster and retains accessible input errors', async () => {
   const layout = await readFile(new URL('../src/routes/+layout.svelte', import.meta.url), 'utf8');
   const search = await readFile(new URL('../src/lib/components/PlayerSearch.svelte', import.meta.url), 'utf8');

@@ -10,7 +10,13 @@ export async function requestHistory<T>(body: Record<string, unknown>, request: 
   const response = await request('/api/history', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
   });
-  const value = await response.json();
+  let value;
+  try { value = await response.json(); }
+  catch {
+    throw new HistoryApiError(response.status === 429
+      ? 'Rift Regulars is busy. Please wait a moment and try again.'
+      : 'Rift Regulars is temporarily unavailable. Please try again later.', response.status);
+  }
   if (!response.ok) throw new HistoryApiError(
     response.status === 404 && body.action === 'account'
       ? 'Player not found. Check the player name and #TAG.'

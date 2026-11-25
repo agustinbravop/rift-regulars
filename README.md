@@ -112,6 +112,39 @@ Synthetic production RSS comparisons and reproduction commands: [Bun memory repo
 
 Tests use synthetic fixtures in temporary directories. They never replace your imported account data.
 
+## Production deployment
+
+The Dockerfile builds with Bun 1.4.5 and runs only the official adapter output as
+UID/GID 1000 on port 3000, without the localhost preview preload. Its allowlisted
+build context excludes `.env`, imported data and private checkpoints. GitHub
+Actions publishes `ghcr.io/agustinbravop/riftregulars:latest` and immutable
+`sha-<commit>` tags from `main`; the repository remains named `rift-regulars`.
+GHCR must permit the cluster and Image Updater to pull the image (public package,
+or operator-managed registry credentials).
+
+Kubernetes manifests live in the homelab repository at `apps/riftregulars`,
+with Argo CD and Image Updater registrations. The public origin is
+**https://riftregulars.agusbravo.dev**. Runtime configuration uses a namespace-bound
+SealedSecret for `RIOT_API_KEY`; never pass credentials as build arguments.
+The service uses one replica, Recreate updates, a 192 MiB request and a 384 MiB
+memory limit, with static-file probes. These are starting limits, not a measured
+production capacity guarantee. Watch pod/node memory before changing them.
+
+Mount the snapshots PVC read-only at `/app/data/featured`. Provision it before
+the first application rollout through a temporary operator pod, running as UID
+1000: transfer only validated public snapshots and resolved identity records
+with mode 0600. Recreate card metadata against the destination files' stat
+identity; copied sidecars alone cannot retain the optimized path. Keep private
+checkpoints on the operator machine. There is no in-cluster Riot import job.
+
+Traefik bounds expensive `/player` and `/api/history` requests by host-wide rate
+and in-flight limits; static assets, legal pages and probes bypass those limits.
+This intentionally shares capacity across visitors and is not authentication.
+Gateway text errors receive visitor-safe retry guidance in the client.
+The application's connection-idle timeout is disabled for queued Riot requests;
+external proxy timeouts can still interrupt long waits. SIGTERM drains for 30
+seconds within the pod's 40-second grace period. Recreate updates have downtime.
+
 ## Limits and privacy
 
 - “Import complete” means all listed matches downloaded, **not** proof the whole year is available. Coverage dates and partial imports are shown.

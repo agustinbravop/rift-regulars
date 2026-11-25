@@ -619,7 +619,6 @@
           <p class="coverage-scanned">Scanned on {new Date(summary.updated).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')}.</p>
         </div>
         {#if data.featured}
-          <p>Shared snapshot. {summary.coverage.note}</p>
           {#if data.profile?.excluded.length}<p>Excluded custom, empty or out-of-year records: {data.profile.excluded.join(', ')}</p>{/if}
         {/if}
       </section>

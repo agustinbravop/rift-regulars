@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { navigating } from '$app/state';
+  import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import { Badge } from '#lib/components/ui/badge/index.js';
   import SummonerPortrait from './SummonerPortrait.svelte';
   import { streamerBadge } from '#lib/featured.ts';
@@ -8,6 +10,7 @@
     id: string; streamer: string; riotId: string | null; icon?: number; matches: number | null
   };
   let { accounts }: { accounts: AccountCard[] } = $props();
+  const loadingPath = $derived(navigating.to?.url.pathname);
   const rows = $derived([
     accounts.slice(0, 5),
     accounts.slice(5)
@@ -18,7 +21,12 @@
   {@const gameName = account.riotId?.split('#')[0] ?? account.streamer}
   {@const tag = account.riotId?.split('#')[1]}
   {@const badge = streamerBadge(account.streamer, gameName)}
-  <SummonerPortrait icon={account.icon} name={gameName} />
+  <div class="featured-portrait">
+    <SummonerPortrait icon={account.icon} name={gameName} />
+    {#if account.riotId && loadingPath === playerUrl(account.riotId)}
+      <span class="featured-loading" aria-hidden="true"><LoaderCircle class="size-6 animate-spin motion-reduce:animate-none" /></span>
+    {/if}
+  </div>
   <div class="featured-details">
     <p class="featured-name" title={account.riotId ?? gameName}>{gameName}{#if tag}<span class="player-tag">#{tag}</span>{/if}</p>
     {#if badge}
@@ -38,7 +46,13 @@
         {#each row as account (account.id)}
           <li>
             {#if account.riotId && account.matches !== null}
-              <a class="featured-card" href={playerUrl(account.riotId)}>{@render card(account)}</a>
+              <a class="featured-card" href={playerUrl(account.riotId)}
+                aria-busy={loadingPath === playerUrl(account.riotId)}
+                aria-disabled={loadingPath === playerUrl(account.riotId)}
+                onclick={(event) => {
+                  if (loadingPath === playerUrl(account.riotId!) && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) event.preventDefault();
+                }}
+              >{@render card(account)}</a>
             {:else}
               <div class="featured-card" role="link" aria-disabled="true">{@render card(account)}</div>
             {/if}
@@ -47,6 +61,7 @@
       </ul>
       {/each}
   </div>
+  <span class="sr-only" role="status">{#if accounts.some(account => account.riotId && loadingPath === playerUrl(account.riotId))}Loading player profile…{/if}</span>
 </section>
 
 <style>
@@ -56,6 +71,9 @@
   .featured-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; list-style: none; }
   li { flex: 0 0 auto; width: max-content; max-width: 100%; }
   .featured-card { display: flex; align-items: center; gap: .75rem; min-height: 6rem; height: 100%; padding: .75rem 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); text-decoration: none; }
+  .featured-portrait { position: relative; flex-shrink: 0; }
+  .featured-loading { position: absolute; inset: 0; display: grid; place-items: center; border-radius: inherit; background: color-mix(in oklch, var(--card), transparent 20%); color: var(--primary); }
+  a.featured-card[aria-busy="true"] { border-color: var(--primary); background: color-mix(in oklch, var(--card), var(--foreground) 4%); cursor: progress; }
   .featured-card :global(.summoner-portrait[data-slot="avatar"]) { width: 56px; height: 56px; flex-shrink: 0; }
   .featured-card :global(.summoner-portrait img) { width: 100%; height: 100%; object-fit: cover; }
   .featured-details { position: relative; min-width: 0; font-size: .95rem; line-height: 1.35; }

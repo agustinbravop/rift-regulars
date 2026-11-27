@@ -31,7 +31,7 @@ test('only available cards are links; unavailable cards have disabled semantics 
   assert.match(source, /#if account\.riotId && account\.matches !== null\}\s*<a/);
   assert.match(source, /<div class="featured-card" role="link" aria-disabled="true">/);
   assert.equal((source.match(/<a /g) ?? []).length, 1);
-  assert.doesNotMatch(source, /History unavailable|onclick|onsubmit/);
+  assert.doesNotMatch(source, /History unavailable|onsubmit/);
 });
 
 test('account name and tag stay on one line with conditional badge and no rendered game counts', () => {
@@ -44,7 +44,7 @@ test('account name and tag stay on one line with conditional badge and no render
 });
 
 test('static catalog has no controls, moving tracks or duplicated/hidden groups', () => {
-  assert.doesNotMatch(source, /Button|<button|Pause|Play|paused|duplicate|inert|aria-hidden|animation|@keyframes|scrollBy/);
+  assert.doesNotMatch(source, /Button|<button|Pause|Play|paused|duplicate|inert|@keyframes|scrollBy/);
   assert.equal((source.match(/#each rows as row, rowIndex/g) ?? []).length, 1);
   assert.equal((source.match(/#each row as account/g) ?? []).length, 1);
   assert.match(source, /a\.featured-card:focus-visible \{ outline:/);
@@ -97,11 +97,22 @@ test('available links alone lift on hover/focus, retaining a ring and respecting
 
 test('active links use immediate CSS-only blue press feedback without changing navigation', () => {
   assert.match(source, /a\.featured-card:active \{ transform: translateY\(1px\) scale\(\.99\);[^}]*background:[^}]*border-color: var\(--primary\); box-shadow: inset[^}]*transition-duration: 80ms/);
-  assert.doesNotMatch(source, /border-color: #ffbc70|div\.featured-card:active|onclick|onmousedown|setTimeout/);
+  assert.doesNotMatch(source, /border-color: #ffbc70|div\.featured-card:active|onmousedown|setTimeout/);
   assert.match(source, /<a class="featured-card" href=\{playerUrl\(account\.riotId\)\}/);
 });
 
 test('featured icons alone reserve 56px without changing shared avatars', () => {
   assert.match(source, /\.featured-card :global\(\.summoner-portrait\[data-slot="avatar"\]\) \{ width: 56px; height: 56px; flex-shrink: 0/);
   assert.match(source, /\.featured-card :global\(\.summoner-portrait img\) \{ width: 100%; height: 100%; object-fit: cover/);
+});
+
+test('selected cards reflect navigation with an accessible portrait spinner and no visible loading copy', () => {
+  assert.match(source, /import \{ navigating \} from '\$app\/state'/);
+  assert.match(source, /loadingPath = \$derived\(navigating\.to\?\.url\.pathname\)/);
+  assert.match(source, /aria-busy=\{loadingPath === playerUrl\(account\.riotId\)\}/);
+  assert.match(source, /aria-disabled=\{loadingPath === playerUrl\(account\.riotId\)\}/);
+  assert.match(source, /loadingPath === playerUrl\(account\.riotId!\) && event\.button === 0 && !event\.metaKey && !event\.ctrlKey && !event\.shiftKey && !event\.altKey\) event\.preventDefault\(\)/);
+  assert.match(source, /featured-loading" aria-hidden="true"><LoaderCircle class="size-6 animate-spin motion-reduce:animate-none"/);
+  assert.match(source, /class="sr-only" role="status"/);
+  assert.doesNotMatch(source, /Opening profile|setTimeout/);
 });

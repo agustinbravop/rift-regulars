@@ -58,6 +58,10 @@ The Show all / Show less footer spans both the summary and match columns, with t
 
 ## Components
 
+Missing pages use the root SvelteKit error screen with “Page not found”, “This page doesn’t exist or may have moved.” and one Back to search link styled with the owned Button. Keep the existing header/logo and shared layout footer, centered dark content, no illustration or animation, and the tab title “Page not found | Rift Regulars”. Preserve HTTP error statuses and use temporary-unavailability copy for non-404 failures without exposing internal errors. Unavailable featured profiles retain their existing separate handling.
+
+Featured cards show a spinner over the portrait and retain a blue border and brighter surface while SvelteKit navigates to that profile, without visible loading copy or layout shifts. Announce loading to screen readers, suppress repeat activation only for the pending card, preserve modified-click navigation, and disable spinner motion for reduced-motion preferences. Navigation completion or cancellation clears the state.
+
 Desktop expanded details use a 204–254px sidebar, a 1px separator and two 24px gutters, taking the extra spacing entirely from the sidebar so the main table retains its width. Padding is unchanged. The mobile stack keeps its 28px gap; the details footer still spans the full grid.
 
 The app identity uses the user-supplied transparent two-minion artwork: `static/brand-logo.png` (256px source, displayed at 56px) plus `static/favicon.png` (48px) and `static/favicon.ico` (16/32/48px). Keep it transparent and unframed; do not redraw or replace the supplied artwork. The header image is decorative beside the visible app name.

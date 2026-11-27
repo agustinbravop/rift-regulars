@@ -338,7 +338,7 @@
 <svelte:window onkeydown={focusSearch} />
 
 <svelte:head>
-  <title>Rift Regulars | LoL Encounter Tracker</title>
+  <title>{currentAccount.gameName}#{currentAccount.tagLine} | Rift Regulars</title>
   <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
   <link rel="icon" href="/favicon.png" type="image/png" sizes="48x48" />
   <link rel="preload" href="/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin="anonymous" />

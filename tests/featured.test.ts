@@ -9,6 +9,8 @@ import { streamerBadge } from '../src/lib/featured.ts';
 import { match } from './fixtures.ts';
 import { fetchQueueLabels, readQueueLabels } from '../src/lib/server/queue-labels.ts';
 import { yearStart } from '../src/lib/encounters.ts';
+import queueNames from '../src/lib/queue-names.json' with { type: 'json' };
+import { QUEUE_LABEL_OVERRIDES } from '../src/lib/scouting.ts';
 
 const account = { puuid: 'synthetic-account', gameName: 'Synthetic', tagLine: 'TEST' };
 const year = new Date().getUTCFullYear();
@@ -277,16 +279,22 @@ test('queue metadata uses one unauthenticated timed request, validates responses
         { queueId: 400, description: 'Normal Draft Pick games' }
       ]));
     };
-    assert.deepEqual(await fetchQueueLabels(request, fallback), { 450: 'ARAM games', 400: 'Normal Draft Pick games' });
+    assert.deepEqual(await fetchQueueLabels(request, fallback), {
+      ...queueNames, 450: 'ARAM games', 400: 'Normal Draft Pick games', ...QUEUE_LABEL_OVERRIDES
+    });
     assert.equal(calls, 1);
     for (const value of [
       [{ queueId: '450', description: 'invalid' }],
       [{ queueId: 450, description: {} }],
       [], { nonsense: 'invalid' }
     ]) {
-      assert.deepEqual(await fetchQueueLabels(async () => new Response(JSON.stringify(value)), fallback), { 450: 'ARAM games' });
+      assert.deepEqual(await fetchQueueLabels(async () => new Response(JSON.stringify(value)), fallback), {
+        ...queueNames, 450: 'ARAM games', ...QUEUE_LABEL_OVERRIDES
+      });
     }
-    assert.deepEqual(await fetchQueueLabels(async () => { throw new Error('Offline'); }, fallback), { 450: 'ARAM games' });
+    assert.deepEqual(await fetchQueueLabels(async () => { throw new Error('Offline'); }, fallback), {
+      ...queueNames, 450: 'ARAM games', ...QUEUE_LABEL_OVERRIDES
+    });
     await writeFile(fallback, '{"450":false}');
     await assert.rejects(fetchQueueLabels(async () => new Response('bad'), fallback));
     await assert.rejects(readQueueLabels(fallback));

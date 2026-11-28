@@ -43,6 +43,8 @@ Opening a player link or recent entry with complete browser-cached history shows
 
 ## Featured accounts (operator only)
 
+Queue names are bundled in `src/lib/queue-names.json`, so existing snapshots and browser caches can display missing labels without reimporting matches. Refresh the public metadata with `bun run queues` (no Riot API key needed). This preserves previous names, merges nonblank CommunityDragon client names, then Riot's official names, then our friendly overrides. It atomically replaces each of the bundled map and local `data/queues.json` only after both downloads validate. Saved profile labels take precedence over the bundled fallback; unknown future IDs still display as `Queue [number]`. Some internal queues have no published name.
+
 The landing carousel links to shared, precomputed current-year profiles at the normal `/player/Name%23TAG` URLs. Missing or corrupt snapshots show an unavailable state, never a visitor-triggered Riot import. The table retains local premade overrides using the same account PUUID keys as personal histories; featured match history is not copied into IndexedDB.
 
 ```bash
@@ -52,7 +54,7 @@ bun run featured --id crownie --riot-id "Alex Mercer#LARP"
 
 Run **one named account at a time**, sequentially. The nine entries in `src/lib/featured.ts` configure labels and verified Riot IDs; `--riot-id` overrides a configured ID. Discovery determines the active server without guessing from the tag. The command uses the shared `historyRequest` and limiter. Do not run it alongside another importer, browser scans, or another application using the key: quotas are process-local.
 
-- Each command fetches public queue labels once, without credentials, with a ten-second timeout and validated `data/queues.json` fallback. Only labels for imported queues are saved. If both metadata sources fail validation or are unavailable, the command stops without authenticated requests.
+- Each command fetches Riot's public queue labels once, without credentials, with a ten-second timeout and validated `data/queues.json` fallback. Bundled names fill missing IDs, and friendly overrides apply last. Only labels for imported queues are saved. If the request fails and the local fallback is unavailable or invalid, the command stops without authenticated requests.
 - `data/featured/<id>-<year>.private.json.gz` is a resumable compact history, retaining every participant, including singleton encounters. No raw full-match payloads are saved.
 - `data/featured/<id>-<year>.public.json.gz` holds the resolved identity, platform, icon, exclusions, coverage and precomputed summary. Only this public envelope reaches visitors; private history files are not HTTP endpoints.
 - A small `<id>-<year>.identity.json.gz` preserves resolved aliases, including `--riot-id` overrides, so missing or corrupt public snapshots never turn those names into visitor-triggered imports.

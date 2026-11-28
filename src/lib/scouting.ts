@@ -1,6 +1,12 @@
 import type { Player } from './types.ts';
 import { queueGroup, resultSummary, stats } from './encounters.ts';
 import { championLabel } from './champions.ts';
+import queueNames from './queue-names.json' with { type: 'json' };
+
+const knownQueues: Record<string, string> = queueNames;
+export const QUEUE_LABEL_OVERRIDES: Record<string, string> = {
+  '420': 'Ranked Solo/Duo', '440': 'Ranked Flex', '710': 'Ranked 5s', '1750': 'Arena'
+};
 
 export const ROSTER_PAGE_SIZE = 50;
 export function shouldExpandRow(target: Pick<Element, 'closest'>, selectedText: string) {
@@ -49,11 +55,9 @@ export function sortPlayers(players: Player[], column: PlayerSort, direction: So
 }
 
 export function queueLabel(id: string, queues: Record<string, string>) {
-  const labels: Record<string, string> = {
-    '420': 'Ranked Solo/Duo', '440': 'Ranked Flex', '710': 'Ranked 5s', '1750': 'Arena'
-  };
   const group = queueGroup(id);
-  return labels[group] ?? queues[group] ?? `Queue ${group}`;
+  const label = QUEUE_LABEL_OVERRIDES[group] ?? (queues[group]?.trim() || knownQueues[group] || `Queue ${group}`);
+  return label.replace(/\s+games$/i, '');
 }
 
 export function rosterPage(players: Player[], requestedPage: number) {

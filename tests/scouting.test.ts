@@ -122,6 +122,13 @@ test('uses the requested short queue names and preserves unknown queue fallbacks
   assert.equal(queueLabel('1750', queues), 'Arena');
   assert.equal(queueLabel('710', queues), 'Ranked 5s');
   assert.equal(queueLabel('450', queues), 'ARAM');
+  assert.equal(queueLabel('450', { 450: '5v5 ARAM games' }), '5v5 ARAM');
+  assert.equal(queueLabel('480', { 480: 'Swiftplay Games' }), 'Swiftplay');
+  assert.equal(queueLabel('400', { 400: '  5v5 Draft Pick games  ' }), '5v5 Draft Pick');
+  assert.equal(queueLabel('99998', { 99998: 'Games Festival' }), 'Games Festival');
+  assert.equal(queueLabel('3200', queues), 'Howling Abyss Blind Custom');
+  assert.equal(queueLabel('3200', { 3200: '' }), 'Howling Abyss Blind Custom');
+  assert.equal(queueLabel('3200', { 3200: 'Saved custom name' }), 'Saved custom name');
   assert.equal(queueLabel('99999', queues), 'Queue 99999');
 });
 

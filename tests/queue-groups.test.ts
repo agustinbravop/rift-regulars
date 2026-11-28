@@ -121,7 +121,7 @@ test('player queue options collect grouped keys directly with unchanged ordering
   const expected = [...countQueues(players.flatMap(p => p.encounters)).keys()]
     .sort((a, b) => queueName(b).localeCompare(queueName(a)));
   assert.deepEqual(collect({ players }, queueGroup, queueName), expected);
-  assert.deepEqual(expected, ['420', '450', '1750']);
+  assert.deepEqual(expected, ['420', '1750', '450']);
   for (const summary of [undefined, null, { players: [] }, { players: [{ encounters: [] }] }]) {
     assert.deepEqual(collect(summary, queueGroup, queueName), []);
   }
